@@ -106,6 +106,8 @@ Wichtige Komponenten:
 | `docs/decisions/` | Architektur-Entscheidungen (ADRs) |
 | `docs/runbooks/development-workflow.md` | Dev-Workflow |
 | `docs/prompts/team-prompts.md` | Wiederverwendbare Prompts |
+| `apps/website-rescue-agent/src/ui-ux-pro-max/` | UI UX Pro Max Design-Daten |
+| `scripts/` | UI UX Pro Max Python Scripts |
 
 ---
 
@@ -117,6 +119,48 @@ Wichtige Komponenten:
 | CI/CD | GitHub Actions (geplant) |
 | Staging | lokal (kein Staging-Server bisher) |
 | Produktion | noch nicht deployed |
+
+---
+
+## UI UX Pro Max Integration
+
+Ab sofort ist **UI UX Pro Max** in das Projekt integriert. Das bietet:
+- **67 UI Styles** (Glassmorphism, Minimalism, Brutalism, etc.)
+- **161 Color Palettes** für verschiedene Branchen
+- **57 Font Pairings** mit Google Fonts
+- **161 Reasoning Rules** für automatische Design-System-Generierung
+
+### Verwendung
+
+**Python Scripts ausführen:**
+```bash
+# Design-System für ein Projekt generieren
+python3 scripts/search.py "beauty spa wellness" --design-system -p "Serenity Spa"
+
+# Farbpaletten suchen
+python3 scripts/search.py "luxury brand" --domain color
+
+# UI Styles suchen
+python3 scripts/search.py "glassmorphism" --domain style
+
+# Fonts suchen
+python3 scripts/search.py "elegant serif" --domain typography
+```
+
+**In Node.js/TypeScript nutzen:**
+Die CSV-Dateien unter `src/ui-ux-pro-max/data/` können direkt importiert werden:
+- `products.csv` - 161 Produktkategorien
+- `styles.csv` - 67 UI Styles
+- `colors.csv` - 161 Farbpaletten
+- `typography.csv` - 57 Font-Paarungen
+
+### Integration in Website Rescue Agent
+
+Für die Demo-Website-Generierung können wir jetzt:
+1. Automatisch passende Styles basierend auf der Branche vorschlagen
+2. Farbpaletten für das Redesign auswählen
+3. Typography-Paarungen empfehlen
+4. Komplette Design-Systeme generieren
 
 ---
 
@@ -149,3 +193,4 @@ Wichtige Komponenten:
 | 2026-03-27 | Team | Initiale Version erstellt (für Claude Code) |
 | 2026-03-27 | Marcel + Claude | Projektdetails Website Rescue Agent eingepflegt |
 | 2026-03-28 | Marcel + Kimi | Konvertierung zu Kimi Code CLI |
+| 2026-03-28 | Marcel + Kimi | UI UX Pro Max Integration |
