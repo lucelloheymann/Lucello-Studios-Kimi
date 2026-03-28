@@ -61,7 +61,7 @@ class MockQueue {
     // Auto-process nach kurzer Verzögerung (für Demo)
     setTimeout(() => this.processJob(id), 2000 + Math.random() * 3000);
 
-    return { id, ...job } as Job;
+    return { ...job } as unknown as Job;
   }
 
   private async processJob(id: string) {

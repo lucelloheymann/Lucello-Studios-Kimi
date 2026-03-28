@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatDate } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { LeadStatus } from "@/types";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -256,7 +257,7 @@ export default async function OutreachPage() {
                         {draft.sentAt ? formatDate(draft.sentAt) : "—"}
                       </span>
                       <div>
-                        <StatusBadge status={draft.company.status} />
+                        <StatusBadge status={draft.company.status as LeadStatus} />
                       </div>
                     </Link>
                   ))}

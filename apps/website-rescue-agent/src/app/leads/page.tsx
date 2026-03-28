@@ -366,7 +366,7 @@ export default async function LeadsPage({
 
                   {/* Status */}
                   <div>
-                    <StatusBadge status={lead.status} />
+                    <StatusBadge status={lead.status as LeadStatus} />
                   </div>
 
                   {/* Datum */}

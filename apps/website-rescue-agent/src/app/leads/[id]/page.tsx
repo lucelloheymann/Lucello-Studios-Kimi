@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { TimelineSection, TimelineEvent } from "@/components/timeline/timeline-section";
+import { IconWrapper } from "@/components/ui/icon-wrapper";
 import {
   STATUS_LABELS,
   INDUSTRIES,
@@ -12,7 +13,7 @@ import {
   truncate,
 } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { LeadStatus, OutreachStatus } from "@/types";
+import { LeadStatus } from "@/types";
 import Link from "next/link";
 import {
   Globe,
@@ -1001,6 +1002,71 @@ export default async function LeadDetailPage({ params }: Params) {
                   </p>
                 </div>
               )}
+              
+              {/* Vorschau / Thumbnail */}
+              <div className="px-5 py-3 border-t border-zinc-800">
+                <p className="text-xs text-zinc-600 mb-2">Vorschau</p>
+                {latestSite.screenshotUrl || latestSite.thumbnailUrl ? (
+                  <div className="rounded-lg overflow-hidden border border-zinc-800">
+                    <img 
+                      src={latestSite.thumbnailUrl || latestSite.screenshotUrl || ""} 
+                      alt="Demo Vorschau"
+                      className="w-full h-32 object-cover"
+                    />
+                  </div>
+                ) : latestSite.previewUrl ? (
+                  <div className="rounded-lg border border-zinc-800 bg-zinc-950 h-32 flex items-center justify-center">
+                    <Link 
+                      href={latestSite.previewUrl}
+                      target="_blank"
+                      className="text-xs text-zinc-500 hover:text-white flex items-center gap-1.5"
+                    >
+                      <IconWrapper icon={Eye} className="h-4 w-4" />
+                      Preview öffnen
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-zinc-800 border-dashed bg-zinc-950 h-32 flex flex-col items-center justify-center text-zinc-600">
+                    <IconWrapper icon={LayoutTemplate} className="h-8 w-8 mb-2" />
+                    <span className="text-xs">Keine Vorschau verfügbar</span>
+                  </div>
+                )}
+              </div>
+              
+              {/* Aktionen: Regeneration / Retry */}
+              <div className="px-5 py-3 border-t border-zinc-800 flex gap-2">
+                {latestSite.errorCode ? (
+                  <form action={`/api/leads/${id}/generate-site`} method="POST" className="flex-1">
+                    <button
+                      type="submit"
+                      className="w-full flex items-center justify-center gap-1.5 text-sm bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-500 transition-colors"
+                    >
+                      <IconWrapper icon={RotateCcw} className="h-3.5 w-3.5" />
+                      Erneut versuchen
+                    </button>
+                  </form>
+                ) : (
+                  <form action={`/api/leads/${id}/generate-site`} method="POST" className="flex-1">
+                    <button
+                      type="submit"
+                      className="w-full flex items-center justify-center gap-1.5 text-sm text-zinc-400 border border-zinc-700 px-3 py-2 rounded-lg hover:bg-zinc-800 hover:text-white transition-colors"
+                    >
+                      <IconWrapper icon={Sparkles} className="h-3.5 w-3.5" />
+                      Neu generieren
+                    </button>
+                  </form>
+                )}
+                
+                {company.generatedSites.length > 1 && (
+                  <Link
+                    href={`/leads/${id}/demos`}
+                    className="flex items-center justify-center gap-1.5 text-sm text-zinc-400 border border-zinc-700 px-3 py-2 rounded-lg hover:bg-zinc-800 hover:text-white transition-colors"
+                  >
+                    <IconWrapper icon={History} className="h-3.5 w-3.5" />
+                    {company.generatedSites.length} Versionen
+                  </Link>
+                )}
+              </div>
             </div>
           ) : analysis && company.isQualified ? (
             <div className="rounded-xl bg-zinc-900 border border-zinc-800 border-dashed p-6 flex flex-col items-center text-center">

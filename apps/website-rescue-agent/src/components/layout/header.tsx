@@ -1,6 +1,7 @@
 "use client";
 
 import { signOut } from "next-auth/react";
+import { IconWrapper } from "@/components/ui/icon-wrapper";
 import { LogOut } from "lucide-react";
 import type { Session } from "next-auth";
 
@@ -31,7 +32,7 @@ export function Header({ user }: HeaderProps) {
           onClick={() => signOut({ callbackUrl: "/login" })}
           className="flex items-center gap-1.5 text-xs text-zinc-600 hover:text-zinc-300 transition-colors"
         >
-          <LogOut className="h-3.5 w-3.5" />
+          <IconWrapper icon={LogOut} className="h-3.5 w-3.5" />
           Abmelden
         </button>
       </div>
