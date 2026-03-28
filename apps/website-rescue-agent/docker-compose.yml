@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: wra-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: website_rescue_agent
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - wra-postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: wra-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - wra-redis-data:/data
+
+volumes:
+  wra-postgres-data:
+  wra-redis-data:

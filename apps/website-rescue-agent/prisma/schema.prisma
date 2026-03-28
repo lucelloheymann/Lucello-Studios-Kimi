@@ -1,0 +1,634 @@
+// Website Rescue Agent – Prisma Schema
+// Letzte Änderung: 2026-03-27
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ─────────────────────────────────────────────────────────────────────
+
+enum LeadStatus {
+  NEW
+  QUEUED_FOR_CRAWL
+  CRAWLED
+  ANALYZED
+  QUALIFIED
+  DISQUALIFIED
+  SITE_GENERATED
+  IN_REVIEW
+  APPROVED_FOR_OUTREACH
+  OUTREACH_DRAFT_READY
+  SENT
+  RESPONDED
+  WON
+  LOST
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+enum PageType {
+  HOME
+  SERVICES
+  ABOUT
+  CONTACT
+  REFERENCES
+  IMPRINT
+  CAREER
+  OTHER
+}
+
+enum SiteStyle {
+  SERIOUS_CONSERVATIVE   // seriös / konservativ
+  MODERN_PREMIUM         // modern / hochwertig
+  LOCAL_APPROACHABLE     // lokal / nahbar
+  PERFORMANCE_CONVERSION // performance / conversion-fokussiert
+}
+
+enum GenerationStatus {
+  PENDING
+  GENERATING
+  GENERATED
+  APPROVED
+  REJECTED
+}
+
+enum OutreachType {
+  EMAIL_SHORT           // kurzer Erstkontakt
+  EMAIL_LONG            // ausführlicher Erstkontakt
+  CONTACT_FORM          // Kontaktformular-Version
+  LINKEDIN              // LinkedIn-Nachricht
+  FOLLOW_UP             // Nachfass-Nachricht
+  OBJECTION_RESPONSE    // Antwort auf Einwand
+}
+
+enum OutreachStatus {
+  DRAFT
+  APPROVED
+  REJECTED
+  SENT
+  BOUNCED
+  REPLIED
+}
+
+enum SearchScope {
+  NATIONWIDE   // deutschlandweit
+  BY_STATE     // nach Bundesland
+  BY_CITY      // nach Stadt
+  BY_RADIUS    // Radius um eine Stadt
+}
+
+enum OfferTier {
+  SMALL    // Landingpage Refresh
+  MEDIUM   // Startseiten-Relaunch
+  PREMIUM  // Kompakter Webauftritt + Conversion-Optimierung
+}
+
+// ─── Core: Company / Lead ──────────────────────────────────────────────────────
+
+model Company {
+  id                  String     @id @default(cuid())
+  name                String
+  domain              String     @unique
+  websiteUrl          String?
+  industry            String?
+  city                String?
+  state               String?    // Bundesland
+  country             String     @default("DE")
+  postalCode          String?
+  phone               String?
+  email               String?
+  linkedinUrl         String?
+
+  // Pipeline
+  status              LeadStatus @default(NEW)
+  priority            Int        @default(0)       // 0–100
+  buyingProbability   Float?                       // 0–1
+  opportunityScore    Float?                       // kombinierter Score
+
+  // Discovery
+  searchSource        String?    // manual | csv | google | bing | directory
+  searchConfigId      String?
+  searchQuery         String?
+  searchRegion        String?
+
+  // Qualifikation
+  isQualified         Boolean?
+  qualificationReason String?
+  disqualifiedReason  String?
+
+  // Safety
+  isBlacklisted       Boolean    @default(false)
+  isContacted         Boolean    @default(false)
+  isDuplicate         Boolean    @default(false)
+  duplicateOfId       String?
+
+  // CRM
+  notes               String?    @db.Text
+  nextActionAt        DateTime?
+  nextActionNote      String?
+  ownerId             String?    // User-ID (Auth)
+
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  // Relations
+  contacts            Contact[]
+  crawls              Crawl[]
+  analyses            Analysis[]
+  generatedSites      GeneratedSite[]
+  outreachDrafts      OutreachDraft[]
+  pipelineStates      PipelineState[]
+  auditLogs           AuditLog[]
+  followUpTasks       FollowUpTask[]
+  competitorSnapshots CompetitorSnapshot[]
+  artifacts           Artifact[]
+  searchConfig        SearchConfiguration? @relation(fields: [searchConfigId], references: [id])
+
+  @@index([status])
+  @@index([industry])
+  @@index([state])
+  @@index([priority])
+  @@index([createdAt])
+}
+
+model Contact {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String?
+  email       String?
+  phone       String?
+  role        String?  // z. B. "Geschäftsführer", "Marketing"
+  source      String?  // imprint | website | linkedin | manual
+  isVerified  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+}
+
+// ─── Crawling ─────────────────────────────────────────────────────────────────
+
+model Crawl {
+  id              String    @id @default(cuid())
+  companyId       String
+  status          JobStatus @default(PENDING)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  errorMessage    String?   @db.Text
+  retryCount      Int       @default(0)
+
+  // Basis-Metadaten
+  httpStatus      Int?
+  redirectUrl     String?
+  finalUrl        String?
+  loadTimeMs      Int?
+  pageCount       Int       @default(0)
+
+  // Artefakte
+  screenshotUrl   String?
+  htmlSnapshotUrl String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  company         Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  pages           Page[]
+
+  @@index([companyId])
+  @@index([status])
+}
+
+model Page {
+  id              String   @id @default(cuid())
+  crawlId         String
+  url             String
+  pageType        PageType @default(OTHER)
+
+  // Inhalt
+  title           String?
+  metaDescription String?
+  metaKeywords    String?
+  h1              String?
+  headings        Json?    // Array von { level: 1|2|3, text: string }
+  bodyText        String?  @db.Text
+  html            String?  @db.Text
+
+  // Artefakte
+  screenshotUrl   String?
+
+  // Erkannte Elemente
+  hasViewportMeta Boolean  @default(false)
+  hasCanonical    Boolean  @default(false)
+  hasContactInfo  Boolean  @default(false)
+  hasCTA          Boolean  @default(false)
+  hasForm         Boolean  @default(false)
+  hasPhone        Boolean  @default(false)
+  hasAddress      Boolean  @default(false)
+  hasImages       Boolean  @default(false)
+  imageCount      Int      @default(0)
+  ctaTexts        Json?    // Array von gefundenen CTA-Texten
+  contactEmails   Json?    // Array von gefundenen E-Mails
+  contactPhones   Json?    // Array von gefundenen Telefonnummern
+
+  // Technisch
+  statusCode      Int?
+  loadTimeMs      Int?
+  wordCount       Int?
+
+  createdAt       DateTime @default(now())
+
+  crawl           Crawl    @relation(fields: [crawlId], references: [id], onDelete: Cascade)
+
+  @@index([crawlId])
+  @@index([pageType])
+}
+
+// ─── Analyse ──────────────────────────────────────────────────────────────────
+
+model Analysis {
+  id                  String    @id @default(cuid())
+  companyId           String
+  crawlId             String?
+
+  // Gesamt-Score
+  overallScore        Float?    // 0–100
+  confidence          Float?    // 0–1
+
+  // Teil-Scores
+  designScore         Float?
+  clarityScore        Float?
+  conversionScore     Float?
+  trustScore          Float?
+  uxScore             Float?
+  mobileScore         Float?
+  seoScore            Float?
+  performanceScore    Float?
+  modernityScore      Float?
+
+  // Score-Begründungen
+  scoreReasons        Json?    // { [dimension]: { score, reason, observations[] } }
+
+  // Narrative Ergebnisse
+  executiveSummary    String?  @db.Text
+  strengths           Json?    // String[]
+  weaknesses          Json?    // String[]
+  quickWins           Json?    // String[]
+  opportunities       Json?    // { title, description, impact }[]
+  findings            Json?    // { category, severity, description }[]
+
+  // Qualifikation
+  isQualified         Boolean?
+  qualificationReason String?  @db.Text
+  opportunityScore    Float?   // 0–100
+  buyingProbability   Float?   // 0–1
+
+  // Technisch
+  heuristicVersion    String?
+  llmModel            String?
+  llmPromptVersion    String?
+  status              JobStatus @default(PENDING)
+  errorMessage        String?
+
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  company             Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([status])
+  @@index([overallScore])
+}
+
+model CompetitorSnapshot {
+  id            String   @id @default(cuid())
+  companyId     String
+  url           String
+  domain        String?
+  screenshotUrl String?
+  overallScore  Float?
+  scores        Json?    // { [dimension]: score }
+  summary       String?  @db.Text
+  strengths     Json?
+  weaknesses    Json?
+
+  createdAt     DateTime @default(now())
+
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+}
+
+// ─── Demo-Website-Generator ───────────────────────────────────────────────────
+
+model GeneratedSite {
+  id              String           @id @default(cuid())
+  companyId       String
+  version         Int              @default(1)
+  style           SiteStyle        @default(MODERN_PREMIUM)
+  status          GenerationStatus @default(PENDING)
+
+  // Generierter Inhalt
+  htmlContent     String?          @db.Text
+  cssContent      String?          @db.Text
+  sections        Json?            // Array von Sektionsdaten
+
+  // Platzhalter & Qualität
+  hasPlaceholders     Boolean      @default(false)
+  placeholderNotes    String?      @db.Text
+  unverifiedClaims    Json?        // Markierte ungeprüfte Stellen
+
+  // Versionierung
+  generatedBy     String?          // LLM Model
+  promptVersion   String?
+
+  // Review
+  reviewedAt      DateTime?
+  reviewedBy      String?          // User-ID
+  reviewNotes     String?          @db.Text
+
+  // Artefakte
+  previewUrl      String?          // lokaler oder S3-Pfad
+  screenshotUrl   String?
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, version, style])
+  @@index([companyId])
+  @@index([status])
+}
+
+// ─── Outreach ─────────────────────────────────────────────────────────────────
+
+model OutreachDraft {
+  id              String         @id @default(cuid())
+  companyId       String
+  contactId       String?
+  type            OutreachType   @default(EMAIL_SHORT)
+  version         Int            @default(1)
+
+  // Inhalt
+  subject         String?
+  body            String?        @db.Text
+
+  // Referenzen auf Demo / Angebot
+  generatedSiteId String?
+  offerId         String?
+
+  // Guardrails
+  redFlags        Json?          // Array von { type, description }
+  hasUnreviewedPlaceholders Boolean @default(false)
+  isBlockedForSend Boolean      @default(false)
+  blockReason     String?
+
+  // Status
+  status          OutreachStatus @default(DRAFT)
+  approvedAt      DateTime?
+  approvedBy      String?        // User-ID
+  sentAt          DateTime?
+  sentBy          String?        // User-ID
+  openedAt        DateTime?
+  repliedAt       DateTime?
+
+  // Meta
+  llmModel        String?
+  promptVersion   String?
+  errorMessage    String?
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  company         Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([status])
+}
+
+// ─── CRM / Pipeline ───────────────────────────────────────────────────────────
+
+model PipelineState {
+  id          String     @id @default(cuid())
+  companyId   String
+  fromStatus  LeadStatus?
+  toStatus    LeadStatus
+  changedBy   String?    // User-ID
+  reason      String?
+
+  createdAt   DateTime   @default(now())
+
+  company     Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([createdAt])
+}
+
+model FollowUpTask {
+  id          String    @id @default(cuid())
+  companyId   String
+  title       String
+  dueAt       DateTime?
+  completedAt DateTime?
+  type        String?   // call | email | demo | other
+  notes       String?   @db.Text
+  createdBy   String?   // User-ID
+  assignedTo  String?   // User-ID
+
+  createdAt   DateTime  @default(now())
+
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([dueAt])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  companyId   String?
+  action      String   // z. B. "outreach.approved", "site.generated", "lead.status_changed"
+  entityType  String?
+  entityId    String?
+  userId      String?
+  metadata    Json?
+
+  createdAt   DateTime @default(now())
+
+  company     Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ─── Artefakte / Assets ───────────────────────────────────────────────────────
+
+model Artifact {
+  id          String   @id @default(cuid())
+  companyId   String
+  type        String   // screenshot | html_snapshot | pdf | micro_audit | offer_page
+  url         String
+  filename    String?
+  mimeType    String?
+  sizeBytes   Int?
+  metadata    Json?
+
+  createdAt   DateTime @default(now())
+
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([type])
+}
+
+// ─── Konfiguration ────────────────────────────────────────────────────────────
+
+model SearchConfiguration {
+  id          String      @id @default(cuid())
+  name        String
+  isActive    Boolean     @default(false)
+  description String?
+
+  // Geografisches Suchgebiet
+  scope       SearchScope @default(NATIONWIDE)
+  country     String      @default("DE")
+  states      String[]    // Bundesländer (ISO 3166-2:DE)
+  cities      String[]
+  postalCodes String[]
+  radiusKm    Int?
+  centerCity  String?
+  centerLat   Float?
+  centerLng   Float?
+
+  // Branchenfilter
+  industries  String[]
+
+  // Ausschlüsse
+  excludeLargeCorps   Boolean @default(true)
+  excludeGovt         Boolean @default(true)
+  minEmployees        Int?
+  maxEmployees        Int?    @default(500)
+  excludeKeywords     String[]
+
+  // Limits
+  maxLeadsPerRun  Int? @default(50)
+  dailyLimit      Int? @default(100)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  companies   Company[]
+
+  @@index([isActive])
+}
+
+model IndustryTemplate {
+  id                String   @id @default(cuid())
+  industry          String   @unique
+  displayName       String
+  description       String?
+  isActive          Boolean  @default(true)
+
+  // Template-Daten
+  keySections       Json?    // wichtige Sektionen für diese Branche
+  commonWeaknesses  Json?    // typische Probleme auf schwachen Websites
+  strongCtaTypes    Json?    // effektive CTA-Typen
+  headlinePatterns  Json?    // bewährte Headline-Muster
+  trustElements     Json?    // branchenspezifische Vertrauenselemente
+  styleDirection    String?  // z. B. "seriös, klar, vertrauenswürdig"
+  offerLogic        Json?    // welche Pakete passen zur Branche
+  seoKeywords       Json?    // typische Such-Keywords
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model OfferTemplate {
+  id            String    @id @default(cuid())
+  name          String
+  tier          OfferTier
+  description   String?
+  tagline       String?
+
+  // Inhalt
+  scope         String?   @db.Text
+  benefits      Json?     // String[]
+  features      Json?     // { label, included }[]
+  deliverables  Json?     // String[]
+
+  // Preis
+  priceMin      Int?      // EUR
+  priceMax      Int?      // EUR
+  durationDays  Int?      // geschätzte Umsetzungszeit
+
+  // Targeting
+  suitableIndustries String[]
+  suitableForScore  Json?    // { maxScore: number } — nur für Seiten mit Score ≤ X
+
+  isActive      Boolean   @default(true)
+  sortOrder     Int       @default(0)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model OutreachTemplate {
+  id              String       @id @default(cuid())
+  name            String
+  type            OutreachType
+  industry        String?      // null = universell
+  description     String?
+
+  subjectTemplate String?
+  bodyTemplate    String?      @db.Text
+  // Platzhalter: {{company_name}}, {{city}}, {{weakness_1}}, {{demo_url}}, {{offer_name}}
+
+  isActive        Boolean      @default(true)
+  sortOrder       Int          @default(0)
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+// ─── Job-System ───────────────────────────────────────────────────────────────
+
+model JobRecord {
+  id             String    @id @default(cuid())
+  type           String    // crawl | analyze | generate_site | generate_outreach | send_outreach | ...
+  status         JobStatus @default(PENDING)
+  entityType     String?   // Company | OutreachDraft | ...
+  entityId       String?
+
+  startedAt      DateTime?
+  completedAt    DateTime?
+  retryCount     Int       @default(0)
+  maxRetries     Int       @default(3)
+  errorMessage   String?   @db.Text
+  stackTrace     String?   @db.Text
+
+  payload        Json?
+  result         Json?
+  progress       Int       @default(0)  // 0–100
+
+  idempotencyKey String?   @unique
+  queueJobId     String?   // BullMQ Job ID
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([type, status])
+  @@index([entityId])
+  @@index([createdAt])
+}
