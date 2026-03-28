@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import type { Company, Analysis, Page } from "@prisma/client";
-import type { SiteStyle } from "@prisma/client";
+import type { SiteStyle } from "@/types";
 
 // ─── Zod-Schema ───────────────────────────────────────────────────────────────
 

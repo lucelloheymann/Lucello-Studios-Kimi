@@ -1,10 +1,11 @@
-// Seed-Daten für Website Rescue Agent
+// Seed-Daten für Website Rescue Agent (SQLite-kompatibel)
 // Erstellt realistische Demo-Leads für alle Pipeline-Phasen
 
-import { PrismaClient, LeadStatus, SiteStyle, OutreachStatus } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 
 const db = new PrismaClient();
 
+// LeadStatus als String-Typen für SQLite
 const SAMPLE_LEADS = [
   {
     name: "Schreinerei Wagner GmbH",
@@ -12,7 +13,7 @@ const SAMPLE_LEADS = [
     industry: "handwerk",
     city: "München",
     state: "DE-BY",
-    status: "QUALIFIED" as LeadStatus,
+    status: "QUALIFIED",
     score: 28,
     weaknesses: ["Keine Mobile-Optimierung", "Kein CTA auf der Startseite", "Ladezeit über 8 Sekunden", "Kein Kontaktformular"],
     strengths: ["Impressum vorhanden", "Gute Bilder"],
@@ -23,7 +24,7 @@ const SAMPLE_LEADS = [
     industry: "immobilien",
     city: "Hamburg",
     state: "DE-HH",
-    status: "SITE_GENERATED" as LeadStatus,
+    status: "SITE_GENERATED",
     score: 35,
     weaknesses: ["Veraltetes Design (ca. 2015)", "Keine klare Value Proposition", "Fehlende Bewertungen / Social Proof"],
     strengths: ["Telefonnummer sichtbar", "Leistungsseite vorhanden"],
@@ -34,7 +35,7 @@ const SAMPLE_LEADS = [
     industry: "kanzlei",
     city: "Köln",
     state: "DE-NW",
-    status: "OUTREACH_DRAFT_READY" as LeadStatus,
+    status: "OUTREACH_DRAFT_READY",
     score: 22,
     weaknesses: ["Keine Meta-Descriptions", "Kein H1 auf der Startseite", "Schwache Conversion", "Keine Über-uns-Seite"],
     strengths: ["Domain professionell"],
@@ -45,7 +46,7 @@ const SAMPLE_LEADS = [
     industry: "arztpraxis",
     city: "Berlin",
     state: "DE-BE",
-    status: "ANALYZED" as LeadStatus,
+    status: "ANALYZED",
     score: 42,
     weaknesses: ["Kein Online-Terminbuchung", "Schwaches Design", "Keine Patientenbewertungen"],
     strengths: ["Kontaktdaten sichtbar", "Öffnungszeiten vorhanden", "Mobile-Viewport gesetzt"],
@@ -56,7 +57,7 @@ const SAMPLE_LEADS = [
     industry: "handwerk",
     city: "Dortmund",
     state: "DE-NW",
-    status: "CRAWLED" as LeadStatus,
+    status: "CRAWLED",
     score: 19,
     weaknesses: ["Website lädt sehr langsam", "Kein SSL (HTTP)", "Keine CTAs", "Uraltes Flash-Layout"],
     strengths: ["Telefonnummer gefunden"],
@@ -67,7 +68,7 @@ const SAMPLE_LEADS = [
     industry: "berater",
     city: "Frankfurt am Main",
     state: "DE-HE",
-    status: "QUALIFIED" as LeadStatus,
+    status: "QUALIFIED",
     score: 31,
     weaknesses: ["Keine Mobile-Version", "Generische Texte ohne Differenzierung", "Kein klarer Leistungsbereich"],
     strengths: ["Impressum vollständig"],
@@ -78,7 +79,7 @@ const SAMPLE_LEADS = [
     industry: "fitness",
     city: "Hamburg",
     state: "DE-HH",
-    status: "NEW" as LeadStatus,
+    status: "NEW",
     score: null,
     weaknesses: [],
     strengths: [],
@@ -89,7 +90,7 @@ const SAMPLE_LEADS = [
     industry: "handwerk",
     city: "Stuttgart",
     state: "DE-BW",
-    status: "IN_REVIEW" as LeadStatus,
+    status: "IN_REVIEW",
     score: 26,
     weaknesses: ["Keine Unterseiten", "Nur eine Seite", "Keine Referenzprojekte"],
     strengths: ["Lokale Keywords vorhanden"],
@@ -100,7 +101,7 @@ const SAMPLE_LEADS = [
     industry: "arztpraxis",
     city: "Nürnberg",
     state: "DE-BY",
-    status: "SENT" as LeadStatus,
+    status: "SENT",
     score: 33,
     weaknesses: ["Keine Online-Terminbuchung", "Schlechte Navigation"],
     strengths: ["Team-Fotos vorhanden"],
@@ -111,7 +112,7 @@ const SAMPLE_LEADS = [
     industry: "handwerk",
     city: "Düsseldorf",
     state: "DE-NW",
-    status: "WON" as LeadStatus,
+    status: "WON",
     score: 24,
     weaknesses: ["Komplett veraltete Website", "Keine Bildergalerie", "Kein Kontaktformular"],
     strengths: ["Adresse sichtbar"],
@@ -121,7 +122,7 @@ const SAMPLE_LEADS = [
 async function main() {
   console.log("Seed-Daten werden erstellt...");
 
-  // Industry-Templates
+  // Industry-Templates (JSON als String für SQLite)
   await db.industryTemplate.upsert({
     where: { industry: "handwerk" },
     update: {},
@@ -129,21 +130,21 @@ async function main() {
       industry: "handwerk",
       displayName: "Handwerk",
       description: "Schreinerei, Elektro, Maler, Sanitär, usw.",
-      keySections: ["hero", "services", "about", "trust", "process", "contact"],
-      commonWeaknesses: [
+      keySections: JSON.stringify(["hero", "services", "about", "trust", "process", "contact"]),
+      commonWeaknesses: JSON.stringify([
         "Keine Mobile-Optimierung",
         "Veraltetes Design",
         "Fehlende Referenzprojekte",
         "Kein Online-Anfrage-Formular",
         "Schwache Ladezeit",
-      ],
-      strongCtaTypes: ["Angebot anfordern", "Rückruf vereinbaren", "Kostenlose Besichtigung"],
-      headlinePatterns: [
+      ]),
+      strongCtaTypes: JSON.stringify(["Angebot anfordern", "Rückruf vereinbaren", "Kostenlose Besichtigung"]),
+      headlinePatterns: JSON.stringify([
         "{BERUF} in {ORT} — Qualität die überzeugt",
         "Ihr Meisterbetrieb in {ORT}",
         "{BERUF} mit {JAHRE} Jahren Erfahrung",
-      ],
-      trustElements: ["Meisterbetrieb", "lokale Referenzen", "Kundenbewertungen", "Zertifizierungen"],
+      ]),
+      trustElements: JSON.stringify(["Meisterbetrieb", "lokale Referenzen", "Kundenbewertungen", "Zertifizierungen"]),
       styleDirection: "lokal, vertrauenswürdig, professionell",
     },
   });
@@ -154,39 +155,37 @@ async function main() {
     create: {
       industry: "immobilien",
       displayName: "Immobilienmakler",
-      keySections: ["hero", "services", "about", "references", "trust", "process", "contact"],
-      commonWeaknesses: [
+      keySections: JSON.stringify(["hero", "services", "about", "references", "trust", "process", "contact"]),
+      commonWeaknesses: JSON.stringify([
         "Veraltetes Design ohne aktuelle Listings",
         "Keine klare Erfolgsbilanz sichtbar",
         "Schwache Lead-Generierung",
-      ],
-      strongCtaTypes: ["Kostenlose Immobilienbewertung", "Beratungstermin vereinbaren"],
-      trustElements: ["Verkaufte Objekte", "Kundenbewertungen", "lokale Marktkenntnis"],
+      ]),
+      strongCtaTypes: JSON.stringify(["Kostenlose Immobilienbewertung", "Beratungstermin vereinbaren"]),
+      trustElements: JSON.stringify(["Verkaufte Objekte", "Kundenbewertungen", "lokale Marktkenntnis"]),
       styleDirection: "premium, vertrauenswürdig, lokal verankert",
     },
   });
 
-  // Offer-Templates
-  await db.offerTemplate.createMany({
-    skipDuplicates: true,
-    data: [
+  // Offer-Templates (JSON als String für SQLite)
+  const offerTemplates = [
       {
         name: "Landingpage Refresh",
         tier: "SMALL",
         tagline: "Mehr Anfragen mit einer klaren, modernen Startseite",
         description: "Modernisierung der Startseite mit klarer Value Proposition und starkem CTA",
         scope: "Optimierung der bestehenden Startseite: Headline, Struktur, CTA, Mobile-Check",
-        benefits: ["Mehr Anfragen", "Bessere mobile Darstellung", "Klare Botschaft"],
-        features: [
+        benefits: JSON.stringify(["Mehr Anfragen", "Bessere mobile Darstellung", "Klare Botschaft"]),
+        features: JSON.stringify([
           { label: "Startseiten-Optimierung", included: true },
           { label: "Mobile-Optimierung", included: true },
           { label: "CTA-Optimierung", included: true },
           { label: "Neue Unterseiten", included: false },
-        ],
+        ]),
         priceMin: 990,
         priceMax: 1490,
         durationDays: 7,
-        suitableIndustries: ["handwerk", "dienstleister", "fitness"],
+        suitableIndustries: JSON.stringify(["handwerk", "dienstleister", "fitness"]),
       },
       {
         name: "Startseiten-Relaunch",
@@ -194,18 +193,18 @@ async function main() {
         tagline: "Kompletter Neustart mit professionellem Ergebnis",
         description: "Neue, professionelle Website mit allen wichtigen Seiten und starker Conversion-Ausrichtung",
         scope: "Startseite, Leistungsseiten, Über uns, Kontakt — komplett neu",
-        benefits: ["Professioneller Auftritt", "Mehr Vertrauen", "Mehr Anfragen", "SEO-Basis"],
-        features: [
+        benefits: JSON.stringify(["Professioneller Auftritt", "Mehr Vertrauen", "Mehr Anfragen", "SEO-Basis"]),
+        features: JSON.stringify([
           { label: "Startseite (komplett neu)", included: true },
           { label: "Bis zu 5 Unterseiten", included: true },
           { label: "Mobile-First", included: true },
           { label: "Kontaktformular", included: true },
           { label: "SEO-Grundlage", included: true },
-        ],
+        ]),
         priceMin: 2490,
         priceMax: 3990,
         durationDays: 21,
-        suitableIndustries: ["handwerk", "immobilien", "arztpraxis", "berater", "kanzlei"],
+        suitableIndustries: JSON.stringify(["handwerk", "immobilien", "arztpraxis", "berater", "kanzlei"]),
       },
       {
         name: "Premium Web-Auftritt",
@@ -213,26 +212,31 @@ async function main() {
         tagline: "Ihr digitales Aushängeschild — conversion-optimiert",
         description: "Kompakter professioneller Web-Auftritt mit Strategie, Design und Conversion-Fokus",
         scope: "Vollständige neue Website mit Content-Strategie, Conversion-Optimierung, Ads-Readiness",
-        benefits: ["Premium-Design", "Mehr qualifizierte Leads", "Ads-ready", "Langfristige Grundlage"],
-        features: [
+        benefits: JSON.stringify(["Premium-Design", "Mehr qualifizierte Leads", "Ads-ready", "Langfristige Grundlage"]),
+        features: JSON.stringify([
           { label: "Bis zu 10 Seiten", included: true },
           { label: "Content-Strategie", included: true },
           { label: "Conversion-Optimierung", included: true },
           { label: "Ads-Landing-Page", included: true },
           { label: "3 Monate Support", included: true },
-        ],
+        ]),
         priceMin: 4990,
         priceMax: 8490,
         durationDays: 45,
-        suitableIndustries: ["immobilien", "kanzlei", "arztpraxis", "berater", "agentur"],
+        suitableIndustries: JSON.stringify(["immobilien", "kanzlei", "arztpraxis", "berater", "agentur"]),
       },
-    ],
-  });
+    ];
+  
+  for (const template of offerTemplates) {
+    await db.offerTemplate.upsert({
+      where: { id: template.name },
+      update: {},
+      create: template as any,
+    });
+  }
 
   // Outreach-Templates
-  await db.outreachTemplate.createMany({
-    skipDuplicates: true,
-    data: [
+  const outreachTemplates = [
       {
         name: "Kurzer Erstkontakt — Handwerk",
         type: "EMAIL_SHORT",
@@ -284,8 +288,15 @@ Wenn kein Interesse: eine kurze Antwort genügt, dann melde ich mich nicht mehr.
 
 {{sender_name}}`,
       },
-    ],
-  });
+    ];
+  
+  for (const template of outreachTemplates) {
+    await db.outreachTemplate.upsert({
+      where: { id: template.name },
+      update: {},
+      create: template as any,
+    });
+  }
 
   // Suchkonfiguration
   await db.searchConfiguration.upsert({
@@ -297,7 +308,7 @@ Wenn kein Interesse: eine kurze Antwort genügt, dann melde ich mich nicht mehr.
       isActive: true,
       scope: "NATIONWIDE",
       country: "DE",
-      industries: ["handwerk", "dienstleister", "arztpraxis"],
+      industries: JSON.stringify(["handwerk", "dienstleister", "arztpraxis"]),
       excludeLargeCorps: true,
       excludeGovt: true,
       maxEmployees: 200,
@@ -347,9 +358,9 @@ Wenn kein Interesse: eine kurze Antwort genügt, dann melde ich mich nicht mehr.
             performanceScore: lead.score + Math.random() * 15,
             modernityScore: lead.score - 20,
             executiveSummary: `${lead.name} hat einen Website-Score von ${lead.score}/100. ${lead.weaknesses.length > 0 ? `Hauptprobleme: ${lead.weaknesses.slice(0, 2).join(", ")}.` : ""} Klares Optimierungspotenzial vorhanden.`,
-            strengths: lead.strengths,
-            weaknesses: lead.weaknesses,
-            quickWins: lead.weaknesses.slice(0, 2).map((w) => `Sofortmaßnahme: ${w} beheben`),
+            strengths: JSON.stringify(lead.strengths),
+            weaknesses: JSON.stringify(lead.weaknesses),
+            quickWins: JSON.stringify(lead.weaknesses.slice(0, 2).map((w) => `Sofortmaßnahme: ${w} beheben`)),
             isQualified: lead.score < 55,
             qualificationReason: lead.score < 55 ? "Score unter 55, deutliches Verbesserungspotenzial" : "Score zu hoch für Relaunch-Pitch",
             opportunityScore: Math.max(0, 100 - lead.score) * 0.85,

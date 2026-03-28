@@ -3,9 +3,10 @@
 import { chromium, type Browser, type Page as PlaywrightPage } from "playwright";
 import { db } from "@/lib/db";
 import { extractDomain, normalizeUrl } from "@/lib/utils";
-import { PageType } from "@prisma/client";
+import type { PageType } from "@/types";
 import path from "path";
 import fs from "fs/promises";
+import { logCrawlStarted, logCrawlCompleted, logCrawlFailed } from "./audit.service";
 
 const STORAGE_PATH = process.env.STORAGE_LOCAL_PATH || "./storage";
 const TIMEOUT = parseInt(process.env.CRAWL_TIMEOUT_MS || "30000");
@@ -171,6 +172,9 @@ export async function crawlWebsite(companyId: string): Promise<void> {
   const company = await db.company.findUniqueOrThrow({ where: { id: companyId } });
   const url = normalizeUrl(company.websiteUrl || `https://${company.domain}`);
 
+  // Audit-Log: Crawl gestartet
+  await logCrawlStarted(companyId);
+
   // Crawl-Record anlegen
   const crawl = await db.crawl.create({
     data: {
@@ -230,7 +234,24 @@ export async function crawlWebsite(companyId: string): Promise<void> {
         html,
         statusCode: httpStatus,
         loadTimeMs,
-        ...homeData,
+        title: homeData.title,
+        metaDescription: homeData.metaDescription,
+        metaKeywords: homeData.metaKeywords,
+        h1: homeData.h1,
+        headings: JSON.stringify(homeData.headings),
+        bodyText: homeData.bodyText,
+        hasViewportMeta: homeData.hasViewportMeta,
+        hasCanonical: homeData.hasCanonical,
+        hasCTA: homeData.hasCTA,
+        ctaTexts: JSON.stringify(homeData.ctaTexts),
+        hasForm: homeData.hasForm,
+        hasPhone: homeData.hasPhone,
+        hasAddress: homeData.hasAddress,
+        hasImages: homeData.hasImages,
+        imageCount: homeData.imageCount,
+        contactEmails: JSON.stringify(homeData.contactEmails),
+        contactPhones: JSON.stringify(homeData.contactPhones),
+        wordCount: homeData.wordCount,
       },
     });
 
@@ -273,7 +294,24 @@ export async function crawlWebsite(companyId: string): Promise<void> {
             screenshotUrl: subScreenshotUrl,
             statusCode: subResponse?.status() ?? 0,
             loadTimeMs: subLoadTime,
-            ...subData,
+            title: subData.title,
+            metaDescription: subData.metaDescription,
+            metaKeywords: subData.metaKeywords,
+            h1: subData.h1,
+            headings: JSON.stringify(subData.headings),
+            bodyText: subData.bodyText,
+            hasViewportMeta: subData.hasViewportMeta,
+            hasCanonical: subData.hasCanonical,
+            hasCTA: subData.hasCTA,
+            ctaTexts: JSON.stringify(subData.ctaTexts),
+            hasForm: subData.hasForm,
+            hasPhone: subData.hasPhone,
+            hasAddress: subData.hasAddress,
+            hasImages: subData.hasImages,
+            imageCount: subData.imageCount,
+            contactEmails: JSON.stringify(subData.contactEmails),
+            contactPhones: JSON.stringify(subData.contactPhones),
+            wordCount: subData.wordCount,
           },
         });
 
@@ -324,8 +362,15 @@ export async function crawlWebsite(companyId: string): Promise<void> {
       where: { id: companyId },
       data: { status: "CRAWLED" },
     });
+
+    // Audit-Log: Crawl abgeschlossen
+    await logCrawlCompleted(companyId, pageCount);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unbekannter Fehler";
+    
+    // Audit-Log: Crawl fehlgeschlagen
+    await logCrawlFailed(companyId, message);
+    
     await db.crawl.update({
       where: { id: crawl.id },
       data: {

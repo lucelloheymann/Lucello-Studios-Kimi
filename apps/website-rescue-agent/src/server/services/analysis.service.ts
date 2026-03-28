@@ -6,6 +6,7 @@ import { generateLLMObject } from "@/lib/llm";
 import { ANALYSIS_SYSTEM_PROMPT, buildAnalysisUserPrompt } from "@/server/prompts/analysis.prompt";
 import { analysisSchema } from "@/server/prompts/analysis.prompt";
 import type { AnalysisResult } from "@/types";
+import { logAnalysisStarted, logAnalysisCompleted } from "./audit.service";
 
 // LLM und Heuristik gewichten
 const HEURISTIC_WEIGHT = 0.35;
@@ -24,6 +25,9 @@ export async function analyzeWebsite(companyId: string): Promise<void> {
   if (!crawl) throw new Error(`Kein abgeschlossener Crawl für ${companyId}`);
 
   const homePage = crawl.pages.find((p) => p.pageType === "HOME") ?? crawl.pages[0];
+
+  // Audit-Log: Analyse gestartet
+  await logAnalysisStarted(companyId);
 
   // Analyse-Record anlegen
   const analysis = await db.analysis.create({
@@ -111,18 +115,18 @@ export async function analyzeWebsite(companyId: string): Promise<void> {
         performanceScore: combinedScores.performance ?? heuristicResult.dimensionScores.performance,
         modernityScore: llmResult?.scoreCard?.dimensions?.modernity?.score ?? 40,
 
-        scoreReasons: llmResult?.scoreCard?.dimensions ?? heuristicResult.checks,
+        scoreReasons: JSON.stringify(llmResult?.scoreCard?.dimensions ?? heuristicResult.checks),
         executiveSummary: llmResult?.executiveSummary ?? generateFallbackSummary(overallScore, company.name),
-        strengths: llmResult?.strengths ?? [],
-        weaknesses: llmResult?.weaknesses ?? [],
-        quickWins: llmResult?.quickWins ?? [],
-        opportunities: llmResult?.opportunities ?? [],
-        findings: llmResult?.findings ?? heuristicResult.checks.filter((c) => !c.passed).map((c) => ({
+        strengths: JSON.stringify(llmResult?.strengths ?? []),
+        weaknesses: JSON.stringify(llmResult?.weaknesses ?? []),
+        quickWins: JSON.stringify(llmResult?.quickWins ?? []),
+        opportunities: JSON.stringify(llmResult?.opportunities ?? []),
+        findings: JSON.stringify(llmResult?.findings ?? heuristicResult.checks.filter((c) => !c.passed).map((c) => ({
           category: c.category,
           severity: c.score < 30 ? "high" : "medium",
           title: c.name,
           description: c.reason,
-        })),
+        }))),
 
         isQualified,
         qualificationReason: isQualified
@@ -149,20 +153,8 @@ export async function analyzeWebsite(companyId: string): Promise<void> {
       },
     });
 
-    // Audit-Log
-    await db.auditLog.create({
-      data: {
-        companyId,
-        action: "analysis.completed",
-        entityType: "Analysis",
-        entityId: analysis.id,
-        metadata: {
-          overallScore,
-          isQualified,
-          llmUsed: !!llmResult,
-        },
-      },
-    });
+    // Audit-Log: Analyse abgeschlossen
+    await logAnalysisCompleted(companyId, overallScore, isQualified);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unbekannter Fehler";
     await db.analysis.update({

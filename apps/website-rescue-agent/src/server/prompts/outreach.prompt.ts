@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import type { Company, Analysis, GeneratedSite } from "@prisma/client";
-import type { OutreachType } from "@prisma/client";
+import type { OutreachType } from "@/types";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 

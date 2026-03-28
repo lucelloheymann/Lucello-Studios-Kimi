@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { LeadStatus } from "@prisma/client";
+import { LeadStatus } from "@/types";
 import { STATUS_LABELS, INDUSTRIES, GERMAN_STATES, formatDate } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
 import Link from "next/link";

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { enqueueJob } from "@/lib/queue";
-import { OutreachType } from "@prisma/client";
+import { OutreachType } from "@/types";
 import { z } from "zod";
 
 type Params = { params: Promise<{ id: string }> };

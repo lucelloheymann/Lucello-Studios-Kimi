@@ -8,9 +8,10 @@ import {
   siteGenerationSchema,
   type SiteGenerationResult,
 } from "@/server/prompts/site-generation.prompt";
-import { SiteStyle } from "@prisma/client";
+import { SiteStyle } from "@/types";
 import path from "path";
 import fs from "fs/promises";
+import { logDemoGenerationStarted, logDemoGenerationCompleted, logDemoGenerationFailed } from "./audit.service";
 
 const STORAGE_PATH = process.env.STORAGE_LOCAL_PATH || "./storage";
 
@@ -44,6 +45,9 @@ export async function generateDemoSite(
     where: { companyId, style },
   });
   const version = existingCount + 1;
+
+  // Audit-Log: Demo-Generierung gestartet
+  await logDemoGenerationStarted(companyId, style);
 
   // Site-Record anlegen
   const siteRecord = await db.generatedSite.create({
@@ -92,10 +96,10 @@ export async function generateDemoSite(
         status: "GENERATED",
         htmlContent,
         cssContent,
-        sections: siteContent.sections,
+        sections: JSON.stringify(siteContent.sections),
         hasPlaceholders: siteContent.hasPlaceholders,
-        placeholderNotes: siteContent.placeholderSummary,
-        unverifiedClaims: siteContent.unverifiedClaims ?? [],
+        placeholderNotes: JSON.stringify(siteContent.placeholderSummary),
+        unverifiedClaims: JSON.stringify(siteContent.unverifiedClaims ?? []),
         generatedBy: model,
         previewUrl,
       },
@@ -106,17 +110,14 @@ export async function generateDemoSite(
       data: { status: "SITE_GENERATED" },
     });
 
-    await db.auditLog.create({
-      data: {
-        companyId,
-        action: "site.generated",
-        entityType: "GeneratedSite",
-        entityId: siteRecord.id,
-        metadata: { style, version, hasPlaceholders: siteContent.hasPlaceholders },
-      },
-    });
+    // Audit-Log: Demo erstellt
+    await logDemoGenerationCompleted(companyId, siteRecord.id, siteContent.hasPlaceholders);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unbekannter Fehler";
+    
+    // Audit-Log: Demo-Generierung fehlgeschlagen
+    await logDemoGenerationFailed(companyId, message);
+    
     await db.generatedSite.update({
       where: { id: siteRecord.id },
       data: { status: "REJECTED" },

@@ -125,7 +125,7 @@ async function updateJobRecord(
   try {
     if (job.id) {
       await db.jobRecord.upsert({
-        where: { queueJobId: job.id },
+        where: { id: job.id ?? `${Date.now()}-${Math.random()}` },
         update: {
           status,
           ...(status === "RUNNING" ? { startedAt: new Date() } : {}),
@@ -140,7 +140,7 @@ async function updateJobRecord(
           entityType: "Company",
           entityId: (job.data as JobPayload).companyId,
           startedAt: new Date(),
-          payload: job.data as Record<string, unknown>,
+          payload: JSON.stringify(job.data),
           queueJobId: job.id,
           retryCount: job.attemptsMade,
         },

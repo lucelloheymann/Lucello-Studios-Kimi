@@ -1,123 +1,52 @@
-// Website Rescue Agent – Prisma Schema
-// Letzte Änderung: 2026-03-27
+// Website Rescue Agent – Prisma Schema (SQLite-kompatibel)
+// Letzte Änderung: 2026-03-28
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
-// ─── Enums ─────────────────────────────────────────────────────────────────────
+// ─── Enums als Konstanten (für TypeScript) ─────────────────────────────────────
+// In SQLite werden Enums als Strings gespeichert
 
-enum LeadStatus {
-  NEW
-  QUEUED_FOR_CRAWL
-  CRAWLED
-  ANALYZED
-  QUALIFIED
-  DISQUALIFIED
-  SITE_GENERATED
-  IN_REVIEW
-  APPROVED_FOR_OUTREACH
-  OUTREACH_DRAFT_READY
-  SENT
-  RESPONDED
-  WON
-  LOST
-}
-
-enum JobStatus {
-  PENDING
-  RUNNING
-  COMPLETED
-  FAILED
-  SKIPPED
-}
-
-enum PageType {
-  HOME
-  SERVICES
-  ABOUT
-  CONTACT
-  REFERENCES
-  IMPRINT
-  CAREER
-  OTHER
-}
-
-enum SiteStyle {
-  SERIOUS_CONSERVATIVE   // seriös / konservativ
-  MODERN_PREMIUM         // modern / hochwertig
-  LOCAL_APPROACHABLE     // lokal / nahbar
-  PERFORMANCE_CONVERSION // performance / conversion-fokussiert
-}
-
-enum GenerationStatus {
-  PENDING
-  GENERATING
-  GENERATED
-  APPROVED
-  REJECTED
-}
-
-enum OutreachType {
-  EMAIL_SHORT           // kurzer Erstkontakt
-  EMAIL_LONG            // ausführlicher Erstkontakt
-  CONTACT_FORM          // Kontaktformular-Version
-  LINKEDIN              // LinkedIn-Nachricht
-  FOLLOW_UP             // Nachfass-Nachricht
-  OBJECTION_RESPONSE    // Antwort auf Einwand
-}
-
-enum OutreachStatus {
-  DRAFT
-  APPROVED
-  REJECTED
-  SENT
-  BOUNCED
-  REPLIED
-}
-
-enum SearchScope {
-  NATIONWIDE   // deutschlandweit
-  BY_STATE     // nach Bundesland
-  BY_CITY      // nach Stadt
-  BY_RADIUS    // Radius um eine Stadt
-}
-
-enum OfferTier {
-  SMALL    // Landingpage Refresh
-  MEDIUM   // Startseiten-Relaunch
-  PREMIUM  // Kompakter Webauftritt + Conversion-Optimierung
-}
+// LeadStatus: NEW, QUEUED_FOR_CRAWL, CRAWLED, ANALYZED, QUALIFIED, DISQUALIFIED, SITE_GENERATED, IN_REVIEW, APPROVED_FOR_OUTREACH, OUTREACH_DRAFT_READY, SENT, RESPONDED, WON, LOST
+// JobStatus: PENDING, RUNNING, COMPLETED, FAILED, SKIPPED
+// PageType: HOME, SERVICES, ABOUT, CONTACT, REFERENCES, IMPRINT, CAREER, OTHER
+// SiteStyle: SERIOUS_CONSERVATIVE, MODERN_PREMIUM, LOCAL_APPROACHABLE, PERFORMANCE_CONVERSION
+// GenerationStatus: PENDING, GENERATING, GENERATED, APPROVED, REJECTED
+// OutreachType: EMAIL_SHORT, EMAIL_LONG, CONTACT_FORM, LINKEDIN, FOLLOW_UP, OBJECTION_RESPONSE
+// OutreachStatus: DRAFT, APPROVED, REJECTED, SENT, BOUNCED, REPLIED
+// SearchScope: NATIONWIDE, BY_STATE, BY_CITY, BY_RADIUS
+// OfferTier: SMALL, MEDIUM, PREMIUM
 
 // ─── Core: Company / Lead ──────────────────────────────────────────────────────
 
 model Company {
-  id                  String     @id @default(cuid())
+  id                  String   @id @default(cuid())
   name                String
-  domain              String     @unique
+  domain              String   @unique
   websiteUrl          String?
   industry            String?
   city                String?
-  state               String?    // Bundesland
-  country             String     @default("DE")
+  state               String?  // Bundesland
+  country             String   @default("DE")
   postalCode          String?
   phone               String?
   email               String?
   linkedinUrl         String?
 
-  // Pipeline
-  status              LeadStatus @default(NEW)
-  priority            Int        @default(0)       // 0–100
+  // Pipeline (LeadStatus als String)
+  status              String   @default("NEW")
+  priority            Int      @default(0)       // 0–100
   buyingProbability   Float?                       // 0–1
   opportunityScore    Float?                       // kombinierter Score
 
   // Discovery
-  searchSource        String?    // manual | csv | google | bing | directory
+  searchSource        String?  // manual | csv | google | bing | directory
   searchConfigId      String?
   searchQuery         String?
   searchRegion        String?
@@ -128,19 +57,19 @@ model Company {
   disqualifiedReason  String?
 
   // Safety
-  isBlacklisted       Boolean    @default(false)
-  isContacted         Boolean    @default(false)
-  isDuplicate         Boolean    @default(false)
+  isBlacklisted       Boolean  @default(false)
+  isContacted         Boolean  @default(false)
+  isDuplicate         Boolean  @default(false)
   duplicateOfId       String?
 
   // CRM
-  notes               String?    @db.Text
+  notes               String?
   nextActionAt        DateTime?
   nextActionNote      String?
-  ownerId             String?    // User-ID (Auth)
+  ownerId             String?  // User-ID (Auth)
 
-  createdAt           DateTime   @default(now())
-  updatedAt           DateTime   @updatedAt
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   // Relations
   contacts            Contact[]
@@ -183,10 +112,10 @@ model Contact {
 model Crawl {
   id              String    @id @default(cuid())
   companyId       String
-  status          JobStatus @default(PENDING)
+  status          String    @default("PENDING")  // JobStatus
   startedAt       DateTime?
   completedAt     DateTime?
-  errorMessage    String?   @db.Text
+  errorMessage    String?
   retryCount      Int       @default(0)
 
   // Basis-Metadaten
@@ -214,16 +143,16 @@ model Page {
   id              String   @id @default(cuid())
   crawlId         String
   url             String
-  pageType        PageType @default(OTHER)
+  pageType        String   @default("OTHER")  // PageType
 
   // Inhalt
   title           String?
   metaDescription String?
   metaKeywords    String?
   h1              String?
-  headings        Json?    // Array von { level: 1|2|3, text: string }
-  bodyText        String?  @db.Text
-  html            String?  @db.Text
+  headings        String?  // JSON als String: Array von { level: 1|2|3, text: string }
+  bodyText        String?
+  html            String?
 
   // Artefakte
   screenshotUrl   String?
@@ -238,9 +167,9 @@ model Page {
   hasAddress      Boolean  @default(false)
   hasImages       Boolean  @default(false)
   imageCount      Int      @default(0)
-  ctaTexts        Json?    // Array von gefundenen CTA-Texten
-  contactEmails   Json?    // Array von gefundenen E-Mails
-  contactPhones   Json?    // Array von gefundenen Telefonnummern
+  ctaTexts        String?  // JSON als String: Array von gefundenen CTA-Texten
+  contactEmails   String?  // JSON als String: Array von gefundenen E-Mails
+  contactPhones   String?  // JSON als String: Array von gefundenen Telefonnummern
 
   // Technisch
   statusCode      Int?
@@ -258,13 +187,13 @@ model Page {
 // ─── Analyse ──────────────────────────────────────────────────────────────────
 
 model Analysis {
-  id                  String    @id @default(cuid())
+  id                  String   @id @default(cuid())
   companyId           String
   crawlId             String?
 
   // Gesamt-Score
-  overallScore        Float?    // 0–100
-  confidence          Float?    // 0–1
+  overallScore        Float?   // 0–100
+  confidence          Float?   // 0–1
 
   // Teil-Scores
   designScore         Float?
@@ -278,19 +207,19 @@ model Analysis {
   modernityScore      Float?
 
   // Score-Begründungen
-  scoreReasons        Json?    // { [dimension]: { score, reason, observations[] } }
+  scoreReasons        String?  // JSON als String
 
   // Narrative Ergebnisse
-  executiveSummary    String?  @db.Text
-  strengths           Json?    // String[]
-  weaknesses          Json?    // String[]
-  quickWins           Json?    // String[]
-  opportunities       Json?    // { title, description, impact }[]
-  findings            Json?    // { category, severity, description }[]
+  executiveSummary    String?
+  strengths           String?  // JSON als String: Array von Strings
+  weaknesses          String?  // JSON als String: Array von Strings
+  quickWins           String?  // JSON als String: Array von Strings
+  opportunities       String?  // JSON als String: { title, description, impact }[]
+  findings            String?  // JSON als String: { category, severity, description }[]
 
   // Qualifikation
   isQualified         Boolean?
-  qualificationReason String?  @db.Text
+  qualificationReason String?
   opportunityScore    Float?   // 0–100
   buyingProbability   Float?   // 0–1
 
@@ -298,13 +227,13 @@ model Analysis {
   heuristicVersion    String?
   llmModel            String?
   llmPromptVersion    String?
-  status              JobStatus @default(PENDING)
+  status              String   @default("PENDING")  // JobStatus
   errorMessage        String?
 
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  company             Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company             Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
   @@index([status])
@@ -318,10 +247,10 @@ model CompetitorSnapshot {
   domain        String?
   screenshotUrl String?
   overallScore  Float?
-  scores        Json?    // { [dimension]: score }
-  summary       String?  @db.Text
-  strengths     Json?
-  weaknesses    Json?
+  scores        String?  // JSON als String: { [dimension]: score }
+  summary       String?
+  strengths     String?  // JSON als String
+  weaknesses    String?  // JSON als String
 
   createdAt     DateTime @default(now())
 
@@ -333,117 +262,167 @@ model CompetitorSnapshot {
 // ─── Demo-Website-Generator ───────────────────────────────────────────────────
 
 model GeneratedSite {
-  id              String           @id @default(cuid())
+  id              String   @id @default(cuid())
   companyId       String
-  version         Int              @default(1)
-  style           SiteStyle        @default(MODERN_PREMIUM)
-  status          GenerationStatus @default(PENDING)
+  version         Int      @default(1)
+  variant         String   @default("A")  // A, B, C für A/B-Tests
+  style           String   @default("MODERN_PREMIUM")  // SiteStyle
+  status          String   @default("PENDING")  // GenerationStatus
+
+  // Zusammenfassung für UI
+  summary         String?  // Kurze Beschreibung der Demo
+  headline        String?  // Hauptüberschrift der generierten Seite
+  keyBenefits     String?  // JSON: Array von 3-5 Key Benefits
 
   // Generierter Inhalt
-  htmlContent     String?          @db.Text
-  cssContent      String?          @db.Text
-  sections        Json?            // Array von Sektionsdaten
+  htmlContent     String?
+  cssContent      String?
+  sections        String?  // JSON als String: Array von Sektionsdaten
 
   // Platzhalter & Qualität
-  hasPlaceholders     Boolean      @default(false)
-  placeholderNotes    String?      @db.Text
-  unverifiedClaims    Json?        // Markierte ungeprüfte Stellen
+  hasPlaceholders     Boolean  @default(false)
+  placeholderCount    Int      @default(0)
+  placeholderNotes    String?
+  unverifiedClaims    String?  // JSON als String
+
+  // Fehlerbehandlung
+  errorCode       String?  // z. B. "LLM_TIMEOUT", "INVALID_RESPONSE"
+  errorDetails    String?  // Technische Details
+  retryCount      Int      @default(0)
+  
+  // Regeneration
+  isRegeneration  Boolean  @default(false)
+  previousVersionId String?  // Verweis auf vorherige Version
+  regenerationReason String? // Warum neu generiert?
 
   // Versionierung
-  generatedBy     String?          // LLM Model
+  generatedBy     String?  // LLM Model
   promptVersion   String?
+  generationTimeMs Int?     // Dauer der Generierung
 
   // Review
   reviewedAt      DateTime?
-  reviewedBy      String?          // User-ID
-  reviewNotes     String?          @db.Text
+  reviewedBy      String?  // User-ID
+  reviewNotes     String?
+  reviewRating    Int?     // 1-5 Sterne
 
   // Artefakte
-  previewUrl      String?          // lokaler oder S3-Pfad
+  previewUrl      String?  // lokaler oder S3-Pfad
   screenshotUrl   String?
+  thumbnailUrl    String?  // Kleine Vorschau
 
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  @@unique([companyId, version, style])
+  @@unique([companyId, version, variant])
   @@index([companyId])
   @@index([status])
+  @@index([createdAt])
 }
 
 // ─── Outreach ─────────────────────────────────────────────────────────────────
 
 model OutreachDraft {
-  id              String         @id @default(cuid())
+  id              String   @id @default(cuid())
   companyId       String
   contactId       String?
-  type            OutreachType   @default(EMAIL_SHORT)
-  version         Int            @default(1)
+  type            String   @default("EMAIL_SHORT")  // OutreachType
+  version         Int      @default(1)
 
-  // Inhalt
+  // Empfänger (editierbar, getrennt von Kontakt)
+  recipientName   String?
+  recipientEmail  String?
+  recipientRole   String?
+
+  // Inhalt (editierbar)
   subject         String?
-  body            String?        @db.Text
+  body            String?
+  
+  // Angebot / Preisrahmen
+  offerTier       String?  // SMALL | MEDIUM | PREMIUM
+  offerPriceRange String?  // z. B. "2.500 - 5.000 €"
+  offerValidUntil DateTime?
 
   // Referenzen auf Demo / Angebot
   generatedSiteId String?
   offerId         String?
 
   // Guardrails
-  redFlags        Json?          // Array von { type, description }
+  redFlags        String?  // JSON als String: Array von { type, description, severity }
   hasUnreviewedPlaceholders Boolean @default(false)
-  isBlockedForSend Boolean      @default(false)
+  isBlockedForSend Boolean @default(false)
   blockReason     String?
 
-  // Status
-  status          OutreachStatus @default(DRAFT)
+  // Status & Freigabe-Historie
+  status          String   @default("DRAFT")  // OutreachStatus
+  
+  // Freigabe
   approvedAt      DateTime?
-  approvedBy      String?        // User-ID
+  approvedBy      String?  // User-ID
+  approvalNotes   String?
+  
+  // Ablehnung
+  rejectedAt      DateTime?
+  rejectedBy      String?
+  rejectionReason String?
+  
+  // Versand
   sentAt          DateTime?
-  sentBy          String?        // User-ID
+  sentBy          String?  // User-ID
   openedAt        DateTime?
   repliedAt       DateTime?
+
+  // Edit-Tracking
+  lastEditedAt    DateTime?
+  lastEditedBy    String?
+  editCount       Int      @default(0)
+  
+  // Historie (letzte 10 Änderungen als JSON)
+  editHistory     String?  // JSON: Array von { at, by, field, oldVal, newVal }
 
   // Meta
   llmModel        String?
   promptVersion   String?
   errorMessage    String?
 
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  company         Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
   @@index([status])
+  @@index([createdAt])
 }
 
 // ─── CRM / Pipeline ───────────────────────────────────────────────────────────
 
 model PipelineState {
-  id          String     @id @default(cuid())
+  id          String   @id @default(cuid())
   companyId   String
-  fromStatus  LeadStatus?
-  toStatus    LeadStatus
-  changedBy   String?    // User-ID
+  fromStatus  String?  // LeadStatus
+  toStatus    String   // LeadStatus
+  changedBy   String?  // User-ID
   reason      String?
 
-  createdAt   DateTime   @default(now())
+  createdAt   DateTime @default(now())
 
-  company     Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
   @@index([createdAt])
 }
 
 model FollowUpTask {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   companyId   String
   title       String
   dueAt       DateTime?
   completedAt DateTime?
   type        String?   // call | email | demo | other
-  notes       String?   @db.Text
+  notes       String?
   createdBy   String?   // User-ID
   assignedTo  String?   // User-ID
 
@@ -458,18 +437,36 @@ model FollowUpTask {
 model AuditLog {
   id          String   @id @default(cuid())
   companyId   String?
+  
+  // Event-Kategorisierung für Filterung
+  eventType   String   // SYSTEM | WORKFLOW | QUALIFICATION | DEMO | OUTREACH | SEND | ERROR
   action      String   // z. B. "outreach.approved", "site.generated", "lead.status_changed"
-  entityType  String?
+  
+  // Betroffene Entity
+  entityType  String?  // Company, Crawl, Analysis, GeneratedSite, OutreachDraft
   entityId    String?
-  userId      String?
-  metadata    Json?
-
+  
+  // Auslöser
+  userId      String?  // Bei manuellen Aktionen
+  isSystem    Boolean  @default(false)  // true bei automatischen Prozessen
+  
+  // Inhalt
+  title       String?  // Kurze Überschrift für die Timeline
+  description String?  // Details
+  metadata    String?  // JSON als String für technische Details
+  
+  // Für Fehler-Events
+  severity    String?  // INFO | WARNING | ERROR | CRITICAL
+  errorCode   String?
+  
   createdAt   DateTime @default(now())
 
   company     Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
 
   @@index([companyId])
+  @@index([eventType])
   @@index([action])
+  @@index([severity])
   @@index([createdAt])
 }
 
@@ -483,7 +480,7 @@ model Artifact {
   filename    String?
   mimeType    String?
   sizeBytes   Int?
-  metadata    Json?
+  metadata    String?  // JSON als String
 
   createdAt   DateTime @default(now())
 
@@ -496,31 +493,31 @@ model Artifact {
 // ─── Konfiguration ────────────────────────────────────────────────────────────
 
 model SearchConfiguration {
-  id          String      @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
-  isActive    Boolean     @default(false)
+  isActive    Boolean  @default(false)
   description String?
 
   // Geografisches Suchgebiet
-  scope       SearchScope @default(NATIONWIDE)
-  country     String      @default("DE")
-  states      String[]    // Bundesländer (ISO 3166-2:DE)
-  cities      String[]
-  postalCodes String[]
+  scope       String   @default("NATIONWIDE")  // SearchScope
+  country     String   @default("DE")
+  states      String?  // JSON als String: Bundesländer
+  cities      String?  // JSON als String
+  postalCodes String?  // JSON als String
   radiusKm    Int?
   centerCity  String?
   centerLat   Float?
   centerLng   Float?
 
   // Branchenfilter
-  industries  String[]
+  industries  String?  // JSON als String
 
   // Ausschlüsse
   excludeLargeCorps   Boolean @default(true)
   excludeGovt         Boolean @default(true)
   minEmployees        Int?
   maxEmployees        Int?    @default(500)
-  excludeKeywords     String[]
+  excludeKeywords     String? // JSON als String
 
   // Limits
   maxLeadsPerRun  Int? @default(50)
@@ -542,84 +539,84 @@ model IndustryTemplate {
   isActive          Boolean  @default(true)
 
   // Template-Daten
-  keySections       Json?    // wichtige Sektionen für diese Branche
-  commonWeaknesses  Json?    // typische Probleme auf schwachen Websites
-  strongCtaTypes    Json?    // effektive CTA-Typen
-  headlinePatterns  Json?    // bewährte Headline-Muster
-  trustElements     Json?    // branchenspezifische Vertrauenselemente
+  keySections       String?  // JSON als String
+  commonWeaknesses  String?  // JSON als String
+  strongCtaTypes    String?  // JSON als String
+  headlinePatterns  String?  // JSON als String
+  trustElements     String?  // JSON als String
   styleDirection    String?  // z. B. "seriös, klar, vertrauenswürdig"
-  offerLogic        Json?    // welche Pakete passen zur Branche
-  seoKeywords       Json?    // typische Such-Keywords
+  offerLogic        String?  // JSON als String
+  seoKeywords       String?  // JSON als String
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }
 
 model OfferTemplate {
-  id            String    @id @default(cuid())
+  id            String   @id @default(cuid())
   name          String
-  tier          OfferTier
+  tier          String   // OfferTier
   description   String?
   tagline       String?
 
   // Inhalt
-  scope         String?   @db.Text
-  benefits      Json?     // String[]
-  features      Json?     // { label, included }[]
-  deliverables  Json?     // String[]
+  scope         String?
+  benefits      String?  // JSON als String
+  features      String?  // JSON als String
+  deliverables  String?  // JSON als String
 
   // Preis
-  priceMin      Int?      // EUR
-  priceMax      Int?      // EUR
-  durationDays  Int?      // geschätzte Umsetzungszeit
+  priceMin      Int?     // EUR
+  priceMax      Int?     // EUR
+  durationDays  Int?     // geschätzte Umsetzungszeit
 
   // Targeting
-  suitableIndustries String[]
-  suitableForScore  Json?    // { maxScore: number } — nur für Seiten mit Score ≤ X
+  suitableIndustries String? // JSON als String
+  suitableForScore   String? // JSON als String
 
-  isActive      Boolean   @default(true)
-  sortOrder     Int       @default(0)
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model OutreachTemplate {
-  id              String       @id @default(cuid())
+  id              String   @id @default(cuid())
   name            String
-  type            OutreachType
-  industry        String?      // null = universell
+  type            String   // OutreachType
+  industry        String?  // null = universell
   description     String?
 
   subjectTemplate String?
-  bodyTemplate    String?      @db.Text
+  bodyTemplate    String?
   // Platzhalter: {{company_name}}, {{city}}, {{weakness_1}}, {{demo_url}}, {{offer_name}}
 
-  isActive        Boolean      @default(true)
-  sortOrder       Int          @default(0)
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
 
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 // ─── Job-System ───────────────────────────────────────────────────────────────
 
 model JobRecord {
-  id             String    @id @default(cuid())
-  type           String    // crawl | analyze | generate_site | generate_outreach | send_outreach | ...
-  status         JobStatus @default(PENDING)
-  entityType     String?   // Company | OutreachDraft | ...
+  id             String   @id @default(cuid())
+  type           String   // crawl | analyze | generate_site | generate_outreach | send_outreach | ...
+  status         String   @default("PENDING")  // JobStatus
+  entityType     String?  // Company | OutreachDraft | ...
   entityId       String?
 
   startedAt      DateTime?
   completedAt    DateTime?
   retryCount     Int       @default(0)
   maxRetries     Int       @default(3)
-  errorMessage   String?   @db.Text
-  stackTrace     String?   @db.Text
+  errorMessage   String?
+  stackTrace     String?
 
-  payload        Json?
-  result         Json?
+  payload        String?  // JSON als String
+  result         String?  // JSON als String
   progress       Int       @default(0)  // 0–100
 
   idempotencyKey String?   @unique

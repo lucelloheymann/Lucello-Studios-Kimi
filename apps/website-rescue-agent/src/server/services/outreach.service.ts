@@ -7,7 +7,13 @@ import {
   buildOutreachUserPrompt,
   outreachSchema,
 } from "@/server/prompts/outreach.prompt";
-import { OutreachType } from "@prisma/client";
+import { OutreachType } from "@/types";
+import {
+  logOutreachDraftCreated,
+  logOutreachApproved,
+  logOutreachRejected,
+  logOutreachSent,
+} from "./audit.service";
 
 export async function generateOutreachDraft(
   companyId: string,
@@ -51,15 +57,17 @@ export async function generateOutreachDraft(
     { maxTokens: 2048, temperature: 0.5 }
   );
 
-  await db.outreachDraft.create({
+  const draft = await db.outreachDraft.create({
     data: {
       companyId,
       contactId: contact?.id,
       type,
       version: existingCount + 1,
+      recipientName: contact?.name || company.name,
+      recipientEmail: contact?.email || company.email,
       subject: outreachContent.subject,
       body: outreachContent.body,
-      redFlags: outreachContent.redFlags,
+      redFlags: JSON.stringify(outreachContent.redFlags),
       hasUnreviewedPlaceholders: outreachContent.hasUnreviewedPlaceholders,
       isBlockedForSend: outreachContent.isBlockedForSend,
       blockReason: outreachContent.blockReason,
@@ -68,6 +76,9 @@ export async function generateOutreachDraft(
       promptVersion: "1.0",
     },
   });
+
+  // Audit-Log: Entwurf erstellt
+  await logOutreachDraftCreated(companyId, draft.id, type);
 
   await db.company.update({
     where: { id: companyId },
@@ -108,15 +119,8 @@ export async function approveOutreach(
     data: { status: "APPROVED_FOR_OUTREACH" },
   });
 
-  await db.auditLog.create({
-    data: {
-      companyId: draft.companyId,
-      action: "outreach.approved",
-      entityType: "OutreachDraft",
-      entityId: outreachId,
-      userId,
-    },
-  });
+  // Audit-Log: Freigabe
+  await logOutreachApproved(draft.companyId, outreachId, userId);
 }
 
 export async function rejectOutreach(
@@ -124,20 +128,18 @@ export async function rejectOutreach(
   userId: string,
   reason?: string
 ): Promise<void> {
+  const draft = await db.outreachDraft.findUniqueOrThrow({
+    where: { id: outreachId },
+    select: { companyId: true },
+  });
+
   await db.outreachDraft.update({
     where: { id: outreachId },
     data: { status: "REJECTED" },
   });
 
-  await db.auditLog.create({
-    data: {
-      action: "outreach.rejected",
-      entityType: "OutreachDraft",
-      entityId: outreachId,
-      userId,
-      metadata: { reason },
-    },
-  });
+  // Audit-Log: Ablehnung
+  await logOutreachRejected(draft.companyId, outreachId, reason || "", userId);
 }
 
 // ─── Versand (nur nach Freigabe!) ─────────────────────────────────────────────
@@ -215,14 +217,97 @@ export async function sendOutreach(
     },
   });
 
-  await db.auditLog.create({
+  // Audit-Log: Versand
+  await logOutreachSent(draft.companyId, outreachId, recipientEmail, userId);
+}
+
+// ─── Bearbeitung ──────────────────────────────────────────────────────────────
+
+import { logOutreachEdited } from "./audit.service";
+
+export interface UpdateOutreachData {
+  recipientName?: string;
+  recipientEmail?: string;
+  recipientRole?: string;
+  subject?: string;
+  body?: string;
+  offerPriceRange?: string;
+  offerValidUntil?: Date;
+}
+
+export async function updateOutreachDraft(
+  outreachId: string,
+  userId: string,
+  data: UpdateOutreachData
+): Promise<void> {
+  const draft = await db.outreachDraft.findUniqueOrThrow({
+    where: { id: outreachId },
+  });
+
+  // Nur DRAFT darf bearbeitet werden
+  if (draft.status !== "DRAFT") {
+    throw new Error("Nur Entwürfe im Status DRAFT können bearbeitet werden");
+  }
+
+  // Änderungen tracken
+  const changedFields: string[] = [];
+  const historyEntry: {
+    at: string;
+    by: string;
+    fields: { field: string; oldVal?: string; newVal?: string }[];
+  } = {
+    at: new Date().toISOString(),
+    by: userId,
+    fields: [],
+  };
+
+  // Prüfe welche Felder sich geändert haben
+  if (data.recipientName !== undefined && data.recipientName !== draft.recipientName) {
+    changedFields.push("recipientName");
+    historyEntry.fields.push({ field: "recipientName", oldVal: draft.recipientName || "", newVal: data.recipientName });
+  }
+  if (data.recipientEmail !== undefined && data.recipientEmail !== draft.recipientEmail) {
+    changedFields.push("recipientEmail");
+    historyEntry.fields.push({ field: "recipientEmail", oldVal: draft.recipientEmail || "", newVal: data.recipientEmail });
+  }
+  if (data.recipientRole !== undefined && data.recipientRole !== draft.recipientRole) {
+    changedFields.push("recipientRole");
+    historyEntry.fields.push({ field: "recipientRole", oldVal: draft.recipientRole || "", newVal: data.recipientRole });
+  }
+  if (data.subject !== undefined && data.subject !== draft.subject) {
+    changedFields.push("subject");
+    historyEntry.fields.push({ field: "subject", oldVal: draft.subject || "", newVal: data.subject });
+  }
+  if (data.body !== undefined && data.body !== draft.body) {
+    changedFields.push("body");
+    // Für Body nur Preview speichern (zu lang für History)
+    historyEntry.fields.push({ field: "body", oldVal: "[geändert]", newVal: "[geändert]" });
+  }
+  if (data.offerPriceRange !== undefined && data.offerPriceRange !== draft.offerPriceRange) {
+    changedFields.push("offerPriceRange");
+    historyEntry.fields.push({ field: "offerPriceRange", oldVal: draft.offerPriceRange || "", newVal: data.offerPriceRange });
+  }
+
+  if (changedFields.length === 0) {
+    return; // Nichts geändert
+  }
+
+  // Historie laden und aktualisieren (max 10 Einträge)
+  const currentHistory = draft.editHistory ? JSON.parse(draft.editHistory) : [];
+  const updatedHistory = [historyEntry, ...currentHistory].slice(0, 10);
+
+  // Update durchführen
+  await db.outreachDraft.update({
+    where: { id: outreachId },
     data: {
-      companyId: draft.companyId,
-      action: "outreach.sent",
-      entityType: "OutreachDraft",
-      entityId: outreachId,
-      userId,
-      metadata: { recipientEmail },
+      ...data,
+      lastEditedAt: new Date(),
+      lastEditedBy: userId,
+      editCount: { increment: 1 },
+      editHistory: JSON.stringify(updatedHistory),
     },
   });
+
+  // Audit-Log
+  await logOutreachEdited(draft.companyId, outreachId, changedFields, userId);
 }

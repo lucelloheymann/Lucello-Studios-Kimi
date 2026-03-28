@@ -61,8 +61,8 @@ export default async function TemplatesPage() {
             id: t.id,
             title: t.name,
             meta: t.type,
-            sub: t.isDefault ? "Standard-Vorlage" : "Benutzerdefiniert",
-            isDefault: t.isDefault,
+            sub: t.isActive ? "Aktiv" : "Inaktiv",
+            isDefault: t.isActive,
           }))}
           emptyTitle="Keine Outreach-Templates"
           emptyText="Outreach-Templates werden beim ersten Seed automatisch angelegt und können über die API angepasst werden."
@@ -79,7 +79,7 @@ export default async function TemplatesPage() {
             id: t.id,
             title: t.name,
             meta: t.tier,
-            sub: t.basePrice ? `ab ${t.basePrice.toLocaleString("de-DE")} €` : "Preis auf Anfrage",
+            sub: t.priceMin ? `ab ${t.priceMin.toLocaleString("de-DE")} €` : "Preis auf Anfrage",
             isDefault: false,
           }))}
           emptyTitle="Keine Angebots-Pakete"

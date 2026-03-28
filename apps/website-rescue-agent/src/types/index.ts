@@ -21,17 +21,99 @@ export type {
   JobRecord,
 } from "@prisma/client";
 
-export {
-  LeadStatus,
-  JobStatus,
-  PageType,
-  SiteStyle,
-  GenerationStatus,
-  OutreachType,
-  OutreachStatus,
-  SearchScope,
-  OfferTier,
-} from "@prisma/client";
+// Enums als Konstanten-Objekte (für Verwendung als Werte)
+// SQLite hat keine nativen Enums, daher werden diese als Strings gespeichert
+
+export const LeadStatus = {
+  NEW: "NEW",
+  QUEUED_FOR_CRAWL: "QUEUED_FOR_CRAWL",
+  CRAWLED: "CRAWLED",
+  ANALYZED: "ANALYZED",
+  QUALIFIED: "QUALIFIED",
+  DISQUALIFIED: "DISQUALIFIED",
+  SITE_GENERATED: "SITE_GENERATED",
+  IN_REVIEW: "IN_REVIEW",
+  APPROVED_FOR_OUTREACH: "APPROVED_FOR_OUTREACH",
+  OUTREACH_DRAFT_READY: "OUTREACH_DRAFT_READY",
+  SENT: "SENT",
+  RESPONDED: "RESPONDED",
+  WON: "WON",
+  LOST: "LOST",
+} as const;
+export type LeadStatus = typeof LeadStatus[keyof typeof LeadStatus];
+
+export const JobStatus = {
+  PENDING: "PENDING",
+  RUNNING: "RUNNING",
+  COMPLETED: "COMPLETED",
+  FAILED: "FAILED",
+  SKIPPED: "SKIPPED",
+} as const;
+export type JobStatus = typeof JobStatus[keyof typeof JobStatus];
+
+export const PageType = {
+  HOME: "HOME",
+  SERVICES: "SERVICES",
+  ABOUT: "ABOUT",
+  CONTACT: "CONTACT",
+  REFERENCES: "REFERENCES",
+  IMPRINT: "IMPRINT",
+  CAREER: "CAREER",
+  OTHER: "OTHER",
+} as const;
+export type PageType = typeof PageType[keyof typeof PageType];
+
+export const SiteStyle = {
+  SERIOUS_CONSERVATIVE: "SERIOUS_CONSERVATIVE",
+  MODERN_PREMIUM: "MODERN_PREMIUM",
+  LOCAL_APPROACHABLE: "LOCAL_APPROACHABLE",
+  PERFORMANCE_CONVERSION: "PERFORMANCE_CONVERSION",
+} as const;
+export type SiteStyle = typeof SiteStyle[keyof typeof SiteStyle];
+
+export const GenerationStatus = {
+  PENDING: "PENDING",
+  GENERATING: "GENERATING",
+  GENERATED: "GENERATED",
+  APPROVED: "APPROVED",
+  REJECTED: "REJECTED",
+} as const;
+export type GenerationStatus = typeof GenerationStatus[keyof typeof GenerationStatus];
+
+export const OutreachType = {
+  EMAIL_SHORT: "EMAIL_SHORT",
+  EMAIL_LONG: "EMAIL_LONG",
+  CONTACT_FORM: "CONTACT_FORM",
+  LINKEDIN: "LINKEDIN",
+  FOLLOW_UP: "FOLLOW_UP",
+  OBJECTION_RESPONSE: "OBJECTION_RESPONSE",
+} as const;
+export type OutreachType = typeof OutreachType[keyof typeof OutreachType];
+
+export const OutreachStatus = {
+  DRAFT: "DRAFT",
+  APPROVED: "APPROVED",
+  REJECTED: "REJECTED",
+  SENT: "SENT",
+  BOUNCED: "BOUNCED",
+  REPLIED: "REPLIED",
+} as const;
+export type OutreachStatus = typeof OutreachStatus[keyof typeof OutreachStatus];
+
+export const SearchScope = {
+  NATIONWIDE: "NATIONWIDE",
+  BY_STATE: "BY_STATE",
+  BY_CITY: "BY_CITY",
+  BY_RADIUS: "BY_RADIUS",
+} as const;
+export type SearchScope = typeof SearchScope[keyof typeof SearchScope];
+
+export const OfferTier = {
+  SMALL: "SMALL",
+  MEDIUM: "MEDIUM",
+  PREMIUM: "PREMIUM",
+} as const;
+export type OfferTier = typeof OfferTier[keyof typeof OfferTier];
 
 // ─── Analyse-Typen ─────────────────────────────────────────────────────────────
 
@@ -251,3 +333,98 @@ export type QueueName =
   | "qualify"
   | "compare-competitors"
   | "send-outreach";
+
+// ─── Audit/Timeline Event-Typen ───────────────────────────────────────────────
+
+export const AuditEventType = {
+  SYSTEM: "SYSTEM",
+  WORKFLOW: "WORKFLOW",
+  QUALIFICATION: "QUALIFICATION",
+  DEMO: "DEMO",
+  OUTREACH: "OUTREACH",
+  SEND: "SEND",
+  ERROR: "ERROR",
+} as const;
+export type AuditEventType = typeof AuditEventType[keyof typeof AuditEventType];
+
+export const AuditAction = {
+  // System
+  "system.job_started": "system.job_started",
+  "system.job_completed": "system.job_completed",
+  "system.job_failed": "system.job_failed",
+  "system.error": "system.error",
+  
+  // Workflow
+  "workflow.crawl_started": "workflow.crawl_started",
+  "workflow.crawl_completed": "workflow.crawl_completed",
+  "workflow.analysis_started": "workflow.analysis_started",
+  "workflow.analysis_completed": "workflow.analysis_completed",
+  "workflow.status_changed": "workflow.status_changed",
+  
+  // Qualification
+  "qualification.qualified": "qualification.qualified",
+  "qualification.disqualified": "qualification.disqualified",
+  "qualification.auto_qualified": "qualification.auto_qualified",
+  
+  // Demo
+  "demo.generation_started": "demo.generation_started",
+  "demo.generation_completed": "demo.generation_completed",
+  "demo.generation_failed": "demo.generation_failed",
+  "demo.regenerated": "demo.regenerated",
+  "demo.approved": "demo.approved",
+  "demo.rejected": "demo.rejected",
+  
+  // Outreach
+  "outreach.draft_created": "outreach.draft_created",
+  "outreach.edited": "outreach.edited",
+  "outreach.approved": "outreach.approved",
+  "outreach.rejected": "outreach.rejected",
+  "outreach.sent": "outreach.sent",
+  "outreach.bounced": "outreach.bounced",
+  "outreach.replied": "outreach.replied",
+  "outread.opened": "outreach.opened",
+} as const;
+export type AuditAction = typeof AuditAction[keyof typeof AuditAction];
+
+export const Severity = {
+  INFO: "INFO",
+  WARNING: "WARNING",
+  ERROR: "ERROR",
+  CRITICAL: "CRITICAL",
+} as const;
+export type Severity = typeof Severity[keyof typeof Severity];
+
+export interface TimelineEvent {
+  id: string;
+  eventType: AuditEventType;
+  action: AuditAction | string;
+  title: string;
+  description?: string;
+  timestamp: Date;
+  userId?: string;
+  userName?: string;
+  isSystem: boolean;
+  severity?: Severity;
+  entityType?: string;
+  entityId?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface EditHistoryEntry {
+  at: string;
+  by: string;
+  field: string;
+  oldVal?: string;
+  newVal?: string;
+}
+
+// ─── Timeline Filter ──────────────────────────────────────────────────────────
+
+export interface TimelineFilter {
+  eventTypes?: AuditEventType[];
+  severity?: Severity[];
+  dateFrom?: Date;
+  dateTo?: Date;
+  userId?: string;
+  includeSystem?: boolean;
+}

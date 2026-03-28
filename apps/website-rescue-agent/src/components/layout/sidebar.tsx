@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { IconWrapper } from "@/components/ui/icon-wrapper";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -30,7 +31,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex h-14 items-center gap-2.5 border-b border-zinc-800/60 px-4">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white">
-          <Zap className="h-4 w-4 text-zinc-900" />
+          <IconWrapper icon={Zap} className="h-4 w-4 text-zinc-900" />
         </div>
         <div className="leading-tight">
           <p className="text-sm font-semibold text-white">Rescue Agent</p>
@@ -55,7 +56,7 @@ export function Sidebar() {
                   : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-200"
               )}
             >
-              <item.icon className={cn("h-4 w-4 flex-shrink-0", active ? "text-white" : "text-zinc-600")} />
+              <IconWrapper icon={item.icon} className={cn("h-4 w-4 flex-shrink-0", active ? "text-white" : "text-zinc-600")} />
               {item.name}
             </Link>
           );

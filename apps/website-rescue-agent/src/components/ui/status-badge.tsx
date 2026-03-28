@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { STATUS_LABELS } from "@/lib/utils";
-import type { LeadStatus } from "@prisma/client";
+import type { LeadStatus } from "@/types";
 
 interface StatusBadgeProps {
   status: LeadStatus;

@@ -180,28 +180,37 @@ export default async function SettingsPage() {
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  {config.industries.length > 0 && (
-                    <div className="rounded-lg bg-zinc-900/60 border border-zinc-800 px-3 py-2">
-                      <p className="text-xs text-zinc-600 mb-1">Branchen</p>
-                      <p className="text-xs text-zinc-300">
-                        {config.industries.map((i) => INDUSTRIES[i] ?? i).join(", ")}
-                      </p>
-                    </div>
-                  )}
-                  {config.cities.length > 0 && (
-                    <div className="rounded-lg bg-zinc-900/60 border border-zinc-800 px-3 py-2">
-                      <p className="text-xs text-zinc-600 mb-1">Städte</p>
-                      <p className="text-xs text-zinc-300">{config.cities.join(", ")}</p>
-                    </div>
-                  )}
-                  {config.states.length > 0 && (
-                    <div className="rounded-lg bg-zinc-900/60 border border-zinc-800 px-3 py-2">
-                      <p className="text-xs text-zinc-600 mb-1">Bundesländer</p>
-                      <p className="text-xs text-zinc-300">
-                        {config.states.map((s) => GERMAN_STATES[s] ?? s).join(", ")}
-                      </p>
-                    </div>
-                  )}
+                  {(() => {
+                    const industries = config.industries ? JSON.parse(config.industries) as string[] : [];
+                    const cities = config.cities ? JSON.parse(config.cities) as string[] : [];
+                    const states = config.states ? JSON.parse(config.states) as string[] : [];
+                    return (
+                      <>
+                        {industries.length > 0 && (
+                          <div className="rounded-lg bg-zinc-900/60 border border-zinc-800 px-3 py-2">
+                            <p className="text-xs text-zinc-600 mb-1">Branchen</p>
+                            <p className="text-xs text-zinc-300">
+                              {industries.map((i) => INDUSTRIES[i] ?? i).join(", ")}
+                            </p>
+                          </div>
+                        )}
+                        {cities.length > 0 && (
+                          <div className="rounded-lg bg-zinc-900/60 border border-zinc-800 px-3 py-2">
+                            <p className="text-xs text-zinc-600 mb-1">Städte</p>
+                            <p className="text-xs text-zinc-300">{cities.join(", ")}</p>
+                          </div>
+                        )}
+                        {states.length > 0 && (
+                          <div className="rounded-lg bg-zinc-900/60 border border-zinc-800 px-3 py-2">
+                            <p className="text-xs text-zinc-600 mb-1">Bundesländer</p>
+                            <p className="text-xs text-zinc-300">
+                              {states.map((s) => GERMAN_STATES[s] ?? s).join(", ")}
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                   {config.radiusKm && config.centerCity && (
                     <div className="rounded-lg bg-zinc-900/60 border border-zinc-800 px-3 py-2">
                       <p className="text-xs text-zinc-600 mb-1">Radius</p>

@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { TimelineSection, TimelineEvent } from "@/components/timeline/timeline-section";
 import {
   STATUS_LABELS,
   INDUSTRIES,
@@ -11,6 +12,7 @@ import {
   truncate,
 } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { LeadStatus, OutreachStatus } from "@/types";
 import Link from "next/link";
 import {
   Globe,
@@ -34,6 +36,12 @@ import {
   ArrowRight,
   Activity,
   LayoutTemplate,
+  ShieldCheck,
+  Ban,
+  RotateCcw,
+  FileText,
+  History,
+  Target,
 } from "lucide-react";
 
 type Params = { params: Promise<{ id: string }> };
@@ -64,6 +72,278 @@ function scoreGrade(score: number | null | undefined): string {
   return "Kritisch";
 }
 
+// ── Workflow Status Check ─────────────────────────────────────────────────────
+
+interface WorkflowStatus {
+  canCrawl: boolean;
+  canAnalyze: boolean;
+  canQualify: boolean;
+  canDisqualify: boolean;
+  canGenerateSite: boolean;
+  canGenerateOutreach: boolean;
+  canApprove: boolean;
+  canSend: boolean;
+  crawlPending: boolean;
+  analysisPending: boolean;
+  sitePending: boolean;
+  outreachPending: boolean;
+  blocks: string[];
+}
+
+function getWorkflowStatus(
+  company: {
+    status: string;
+    isQualified: boolean | null;
+    crawls: { status: string }[];
+    analyses: { status: string }[];
+    generatedSites: { status: string }[];
+    outreachDrafts: { status: string; isBlockedForSend: boolean; hasUnreviewedPlaceholders: boolean }[];
+  }
+): WorkflowStatus {
+  const crawl = company.crawls[0];
+  const analysis = company.analyses[0];
+  const site = company.generatedSites[0];
+  const draft = company.outreachDrafts[0];
+
+  const blocks: string[] = [];
+
+  // Check für Crawl
+  const canCrawl = !crawl || crawl.status === "FAILED";
+  const crawlPending = !!crawl && crawl.status === "PENDING";
+
+  // Check für Analyse
+  const canAnalyze = !!crawl && crawl.status === "COMPLETED" && (!analysis || analysis.status === "FAILED");
+  const analysisPending = !!analysis && analysis.status === "PENDING";
+  if (!crawl) blocks.push("Analyse: Erst crawlen");
+  else if (crawl.status !== "COMPLETED") blocks.push("Analyse: Crawl noch nicht abgeschlossen");
+
+  // Check für Qualifizierung
+  const canQualify = !!analysis && analysis.status === "COMPLETED" && company.isQualified !== true;
+  const canDisqualify = !!analysis && analysis.status === "COMPLETED" && company.isQualified !== false;
+
+  // Check für Demo
+  const canGenerateSite = !!analysis && analysis.status === "COMPLETED" && (!site || site.status === "REJECTED");
+  const sitePending = !!site && site.status === "PENDING";
+  if (!analysis) blocks.push("Demo: Erst analysieren");
+
+  // Check für Outreach
+  const canGenerateOutreach = !!analysis && analysis.status === "COMPLETED" && (!draft || draft.status === "REJECTED");
+  const outreachPending = !!draft && draft.status === "PENDING";
+
+  // Check für Freigabe
+  const canApprove = !!draft && draft.status === "DRAFT" && !draft.isBlockedForSend && !draft.hasUnreviewedPlaceholders;
+
+  // Check für Versand
+  const canSend = !!draft && draft.status === "APPROVED";
+
+  return {
+    canCrawl,
+    canAnalyze,
+    canQualify,
+    canDisqualify,
+    canGenerateSite,
+    canGenerateOutreach,
+    canApprove,
+    canSend,
+    crawlPending,
+    analysisPending,
+    sitePending,
+    outreachPending,
+    blocks,
+  };
+}
+
+// ── Next Action Component ─────────────────────────────────────────────────────
+
+interface DraftInfo {
+  id: string;
+  status: string;
+  isBlockedForSend: boolean;
+  hasUnreviewedPlaceholders: boolean;
+}
+
+function NextActionCard({
+  status,
+  wf,
+  hasCrawl,
+  hasAnalysis,
+  hasSite,
+  hasDraft,
+  isQualified,
+}: {
+  status: string;
+  wf: WorkflowStatus;
+  hasCrawl: boolean;
+  hasAnalysis: boolean;
+  hasSite: boolean;
+  hasDraft: DraftInfo | null;
+  isQualified: boolean | null;
+}) {
+  let action: { title: string; desc: string; cta: string; href: string; icon: React.ReactNode; variant: "primary" | "warning" | "info" } | null = null;
+
+  if (wf.crawlPending) {
+    action = {
+      title: "Crawl läuft...",
+      desc: "Die Website wird gerade gecrawlt. Bitte warten.",
+      cta: "Aktualisieren",
+      href: "#",
+      icon: <Clock className="h-5 w-5 text-blue-400" />,
+      variant: "info",
+    };
+  } else if (wf.analysisPending) {
+    action = {
+      title: "Analyse läuft...",
+      desc: "Die KI-Analyse wird durchgeführt. Bitte warten.",
+      cta: "Aktualisieren",
+      href: "#",
+      icon: <Clock className="h-5 w-5 text-violet-400" />,
+      variant: "info",
+    };
+  } else if (wf.sitePending) {
+    action = {
+      title: "Demo wird erstellt...",
+      desc: "Die Demo-Website wird generiert. Bitte warten.",
+      cta: "Aktualisieren",
+      href: "#",
+      icon: <Clock className="h-5 w-5 text-teal-400" />,
+      variant: "info",
+    };
+  } else if (wf.outreachPending) {
+    action = {
+      title: "Outreach wird erstellt...",
+      desc: "Der Outreach-Entwurf wird generiert. Bitte warten.",
+      cta: "Aktualisieren",
+      href: "#",
+      icon: <Clock className="h-5 w-5 text-sky-400" />,
+      variant: "info",
+    };
+  } else if (wf.canCrawl) {
+    action = {
+      title: "Website crawlen",
+      desc: "Starte den Crawl, um die Website zu analysieren.",
+      cta: "Crawl starten",
+      href: "crawl",
+      icon: <Play className="h-5 w-5 text-blue-400" />,
+      variant: "primary",
+    };
+  } else if (wf.canAnalyze) {
+    action = {
+      title: "Analyse erstellen",
+      desc: "Führe eine 9-dimensionale KI-Analyse der Website durch.",
+      cta: "Analyse starten",
+      href: "analyze",
+      icon: <Sparkles className="h-5 w-5 text-violet-400" />,
+      variant: "primary",
+    };
+  } else if (wf.canQualify && isQualified === null) {
+    action = {
+      title: "Lead qualifizieren",
+      desc: "Der Lead hat ein Score < 55. Soll er qualifiziert werden?",
+      cta: "Qualifizieren",
+      href: "qualify",
+      icon: <Target className="h-5 w-5 text-emerald-400" />,
+      variant: "primary",
+    };
+  } else if (wf.canGenerateSite && isQualified) {
+    action = {
+      title: "Demo-Website erstellen",
+      desc: "Generiere eine Demo-Website basierend auf der Analyse.",
+      cta: "Demo erstellen",
+      href: "generate-site",
+      icon: <LayoutTemplate className="h-5 w-5 text-teal-400" />,
+      variant: "primary",
+    };
+  } else if (wf.canGenerateOutreach && isQualified && hasSite) {
+    action = {
+      title: "Outreach erstellen",
+      desc: "Generiere einen personalisierten Outreach-Entwurf.",
+      cta: "Outreach generieren",
+      href: "generate-outreach",
+      icon: <Send className="h-5 w-5 text-sky-400" />,
+      variant: "primary",
+    };
+  } else if (hasDraft && (hasDraft as DraftInfo).status === "DRAFT") {
+    if ((hasDraft as DraftInfo).isBlockedForSend || (hasDraft as DraftInfo).hasUnreviewedPlaceholders) {
+      action = {
+        title: "Outreach prüfen",
+        desc: "Der Entwurf enthält Platzhalter oder ist blockiert. Bitte prüfen.",
+        cta: "Zum Outreach",
+        href: "#outreach",
+        icon: <AlertTriangle className="h-5 w-5 text-amber-400" />,
+        variant: "warning",
+      };
+    } else {
+      const draftId = (hasDraft as DraftInfo).id;
+      action = {
+        title: "Outreach freigeben",
+        desc: "Der Entwurf ist bereit zur Freigabe.",
+        cta: "Freigeben",
+        href: `/api/outreach/${draftId}/approve`,
+        icon: <ShieldCheck className="h-5 w-5 text-emerald-400" />,
+        variant: "primary",
+      };
+    }
+  } else if (hasDraft && (hasDraft as DraftInfo).status === "APPROVED") {
+    const draftId = (hasDraft as DraftInfo).id;
+    action = {
+      title: "Outreach versenden",
+      desc: "Der Entwurf ist freigegeben und kann versendet werden.",
+      cta: "Senden",
+      href: `/api/outreach/${draftId}/send`,
+      icon: <Send className="h-5 w-5 text-sky-400" />,
+      variant: "primary",
+    };
+  }
+
+  if (!action) return null;
+
+  const variantClasses = {
+    primary: "bg-blue-500/10 border-blue-500/20",
+    warning: "bg-amber-500/10 border-amber-500/20",
+    info: "bg-zinc-800 border-zinc-700",
+  };
+
+  return (
+    <div className={`rounded-xl border p-4 ${variantClasses[action.variant]}`}>
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-900/50 shrink-0">
+          {action.icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-semibold text-white">{action.title}</h3>
+          <p className="text-xs text-zinc-400 mt-0.5">{action.desc}</p>
+          {action.href !== "#" && action.href !== "#outreach" && (
+            <form action={action.href.startsWith("/api/outreach") ? action.href : `/api/leads/${status}/${action.href}`} method="POST" className="mt-3">
+              <button
+                type="submit"
+                className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                  action.variant === "primary"
+                    ? "bg-white text-zinc-900 hover:bg-zinc-100"
+                    : action.variant === "warning"
+                    ? "bg-amber-500 text-white hover:bg-amber-600"
+                    : "bg-zinc-700 text-white hover:bg-zinc-600"
+                }`}
+              >
+                {action.cta}
+                <ArrowRight className="h-3 w-3" />
+              </button>
+            </form>
+          )}
+          {action.href === "#outreach" && (
+            <Link
+              href="#outreach"
+              className="inline-flex items-center gap-1.5 mt-3 text-xs font-medium bg-amber-500 text-white px-3 py-1.5 rounded-lg hover:bg-amber-600 transition-colors"
+            >
+              {action.cta}
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function LeadDetailPage({ params }: Params) {
@@ -84,8 +364,8 @@ export default async function LeadDetailPage({ params }: Params) {
       analyses: { orderBy: { createdAt: "desc" }, take: 1 },
       generatedSites: { orderBy: { createdAt: "desc" }, take: 3 },
       outreachDrafts: { orderBy: { createdAt: "desc" }, take: 3 },
-      pipelineStates: { orderBy: { createdAt: "desc" }, take: 8 },
-      auditLogs: { orderBy: { createdAt: "desc" }, take: 10 },
+      pipelineStates: { orderBy: { createdAt: "desc" }, take: 20 },
+      auditLogs: { orderBy: { createdAt: "desc" }, take: 20 },
       followUpTasks: { where: { completedAt: null }, orderBy: { dueAt: "asc" } },
     },
   });
@@ -97,25 +377,19 @@ export default async function LeadDetailPage({ params }: Params) {
   const latestSite = company.generatedSites[0];
   const latestDraft = company.outreachDrafts[0];
 
-  const strengths = (analysis?.strengths as string[] | null) ?? [];
-  const weaknesses = (analysis?.weaknesses as string[] | null) ?? [];
-  const quickWins = (analysis?.quickWins as string[] | null) ?? [];
+  const strengths = analysis?.strengths ? JSON.parse(analysis.strengths) as string[] : [];
+  const weaknesses = analysis?.weaknesses ? JSON.parse(analysis.weaknesses) as string[] : [];
+  const quickWins = analysis?.quickWins ? JSON.parse(analysis.quickWins) as string[] : [];
   const score = analysis?.overallScore ?? null;
 
-  const canCrawl = !crawl;
-  const canAnalyze = !!crawl && !analysis;
-  const canGenerateSite = !!analysis && !latestSite;
-  const canGenerateOutreach = !!analysis && !latestDraft;
-
-  const nextStep = canCrawl
-    ? "Website crawlen"
-    : canAnalyze
-    ? "Website analysieren"
-    : canGenerateSite
-    ? "Demo erstellen"
-    : canGenerateOutreach
-    ? "Outreach erstellen"
-    : null;
+  const wf = getWorkflowStatus({
+    status: company.status,
+    isQualified: company.isQualified,
+    crawls: company.crawls,
+    analyses: company.analyses,
+    generatedSites: company.generatedSites,
+    outreachDrafts: company.outreachDrafts,
+  });
 
   const dimScores = [
     { label: "Design", score: analysis?.designScore },
@@ -128,6 +402,38 @@ export default async function LeadDetailPage({ params }: Params) {
     { label: "Performance", score: analysis?.performanceScore },
     { label: "Modernität", score: analysis?.modernityScore },
   ];
+
+  // Timeline Events aus neuen AuditLogs (mit Event-Typen) und PipelineStates
+  const allTimelineEvents = [
+    // Neue strukturierte AuditLogs
+    ...company.auditLogs.map((log) => ({
+      id: log.id,
+      eventType: log.eventType || "WORKFLOW",
+      timestamp: log.createdAt,
+      title: log.title || getAuditTitle(log.action),
+      description: log.description || log.entityType || "",
+      icon: getAuditIcon(log.action),
+      color: getAuditColor(log.action, log.severity),
+      severity: log.severity,
+      isSystem: log.isSystem,
+      metadata: log.metadata ? JSON.parse(log.metadata) : null,
+    })),
+    // Legacy: PipelineStates als Workflow-Events
+    ...company.pipelineStates
+      .filter((s) => !company.auditLogs.some((l) => l.action === "workflow.status_changed" && l.metadata?.includes(s.toStatus)))
+      .map((s) => ({
+        id: s.id,
+        eventType: "WORKFLOW",
+        timestamp: s.createdAt,
+        title: `Status: ${STATUS_LABELS[s.toStatus as LeadStatus] || s.toStatus}`,
+        description: s.reason || "Status gewechselt",
+        icon: <Activity className="h-3.5 w-3.5" />,
+        color: "text-zinc-400",
+        severity: null,
+        isSystem: true,
+        metadata: { fromStatus: s.fromStatus, toStatus: s.toStatus },
+      })),
+  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   return (
     <div className="p-6 max-w-7xl space-y-5">
@@ -148,10 +454,15 @@ export default async function LeadDetailPage({ params }: Params) {
           {/* Linke Seite: Firma */}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <StatusBadge status={company.status} />
-              {analysis?.isQualified && (
+              <StatusBadge status={company.status as LeadStatus} />
+              {company.isQualified === true && (
                 <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
                   <CheckCircle className="h-3 w-3" /> Qualifiziert
+                </span>
+              )}
+              {company.isQualified === false && (
+                <span className="inline-flex items-center gap-1 rounded-md border border-red-500/25 bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-400">
+                  <Ban className="h-3 w-3" /> Disqualifiziert
                 </span>
               )}
               {company.industry && (
@@ -213,52 +524,61 @@ export default async function LeadDetailPage({ params }: Params) {
           </div>
         </div>
 
-        {/* ── Action-Leiste ── */}
+        {/* ── Action-Leiste mit Gating ── */}
         <div className="border-t border-zinc-800 px-5 py-3 flex items-center gap-2 flex-wrap bg-zinc-950/30">
-          <ActionBtn
+          <WorkflowActionBtn
             href={`/api/leads/${id}/crawl`}
             icon={<Play className="h-3.5 w-3.5" />}
             label="Crawlen"
-            hint={crawl ? `Zuletzt ${formatDate(crawl.createdAt)}` : "Website laden & analysieren"}
-            primary={canCrawl}
-            done={!!crawl}
+            hint={!crawl ? "Website laden & analysieren" : crawl.status === "FAILED" ? "Crawl fehlgeschlagen - Neu versuchen" : `Zuletzt ${formatDate(crawl.createdAt)}`}
+            primary={wf.canCrawl}
+            disabled={!wf.canCrawl}
+            done={!!crawl && crawl.status === "COMPLETED"}
+            pending={wf.crawlPending}
           />
-          <ActionBtn
+          <WorkflowActionBtn
             href={`/api/leads/${id}/analyze`}
             icon={<Sparkles className="h-3.5 w-3.5" />}
             label="Analysieren"
             hint={!crawl ? "Erst crawlen" : analysis ? `Score: ${Math.round(analysis.overallScore ?? 0)}` : "KI-Analyse starten"}
-            primary={canAnalyze}
-            disabled={!crawl}
-            done={!!analysis}
+            primary={wf.canAnalyze}
+            disabled={!wf.canAnalyze}
+            done={!!analysis && analysis.status === "COMPLETED"}
+            pending={wf.analysisPending}
           />
-          <ActionBtn
+          <WorkflowActionBtn
             href={`/api/leads/${id}/generate-site`}
             icon={<LayoutTemplate className="h-3.5 w-3.5" />}
             label="Demo erstellen"
-            hint={!analysis ? "Erst analysieren" : latestSite ? "Demo vorhanden" : "Demo-Website generieren"}
-            primary={canGenerateSite}
-            disabled={!analysis}
+            hint={!analysis ? "Erst analysieren" : !company.isQualified ? "Lead nicht qualifiziert" : latestSite ? "Demo vorhanden" : "Demo-Website generieren"}
+            primary={wf.canGenerateSite && company.isQualified === true}
+            disabled={!wf.canGenerateSite || !company.isQualified}
             done={!!latestSite}
+            pending={wf.sitePending}
           />
-          <ActionBtn
+          <WorkflowActionBtn
             href={`/api/leads/${id}/generate-outreach`}
             icon={<Send className="h-3.5 w-3.5" />}
             label="Outreach"
-            hint={!analysis ? "Erst analysieren" : latestDraft ? "Entwurf vorhanden" : "Outreach-Mail generieren"}
-            primary={canGenerateOutreach}
-            disabled={!analysis}
+            hint={!analysis ? "Erst analysieren" : !company.isQualified ? "Lead nicht qualifiziert" : !latestSite ? "Erst Demo erstellen" : latestDraft ? "Entwurf vorhanden" : "Outreach-Mail generieren"}
+            primary={wf.canGenerateOutreach && company.isQualified === true && !!latestSite}
+            disabled={!wf.canGenerateOutreach || !company.isQualified || !latestSite}
             done={!!latestDraft}
+            pending={wf.outreachPending}
           />
-
-          {nextStep && (
-            <span className="ml-auto flex items-center gap-1.5 text-xs text-zinc-600">
-              <ArrowRight className="h-3 w-3" />
-              Nächster Schritt: <span className="text-zinc-400">{nextStep}</span>
-            </span>
-          )}
         </div>
       </div>
+
+      {/* ── NÄCHSTE EMPFOHLENE AKTION ─────────────────────────────────────── */}
+      <NextActionCard
+        status={id}
+        wf={wf}
+        hasCrawl={!!crawl}
+        hasAnalysis={!!analysis}
+        hasSite={!!latestSite}
+        hasDraft={latestDraft ? { id: latestDraft.id, status: latestDraft.status, isBlockedForSend: latestDraft.isBlockedForSend, hasUnreviewedPlaceholders: latestDraft.hasUnreviewedPlaceholders } : null}
+        isQualified={company.isQualified}
+      />
 
       {/* ── HAUPTGRID ─────────────────────────────────────────────────────── */}
       <div className="grid gap-5 lg:grid-cols-3">
@@ -369,10 +689,91 @@ export default async function LeadDetailPage({ params }: Params) {
               </div>
             </div>
           )}
+
+          {/* Crawl Status */}
+          {crawl && (
+            <div className="rounded-xl bg-zinc-900 border border-zinc-800 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Globe className="h-4 w-4 text-zinc-600" />
+                <h3 className="text-sm font-semibold text-white">Crawl-Status</h3>
+              </div>
+              <div className="space-y-2">
+                <InfoRow label="Status" value={crawl.status === "COMPLETED" ? "Abgeschlossen" : crawl.status === "FAILED" ? "Fehlgeschlagen" : "In Bearbeitung"} />
+                <InfoRow label="Seiten" value={`${crawl.pageCount} Seiten`} />
+                <InfoRow label="Ladezeit" value={`${crawl.loadTimeMs}ms`} />
+                {crawl.errorMessage && (
+                  <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-2 mt-2">
+                    <p className="text-xs text-red-400">{crawl.errorMessage}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ─ RECHTE SPALTE (2/3) ──────────────────────────────────────────── */}
         <div className="lg:col-span-2 space-y-4">
+
+          {/* Qualifizierungs-Status */}
+          {analysis && (
+            <div className="rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-zinc-500" />
+                  <h3 className="text-sm font-semibold text-white">Qualifizierung</h3>
+                </div>
+                {company.isQualified === true ? (
+                  <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
+                    <CheckCircle className="h-3 w-3" /> Qualifiziert
+                  </span>
+                ) : company.isQualified === false ? (
+                  <span className="inline-flex items-center gap-1 rounded-md border border-red-500/25 bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-400">
+                    <Ban className="h-3 w-3" /> Disqualifiziert
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs font-medium text-zinc-500">
+                    <Clock className="h-3 w-3" /> Ausstehend
+                  </span>
+                )}
+              </div>
+              <div className="p-5">
+                {company.isQualified === null ? (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-zinc-300">Soll dieser Lead qualifiziert werden?</p>
+                      <p className="text-xs text-zinc-500 mt-1">Score: {Math.round(score ?? 0)}/100 - {score && score < 55 ? "Empfohlen" : "Nicht empfohlen"}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <form action={`/api/leads/${id}/disqualify`} method="POST">
+                        <button
+                          type="submit"
+                          className="flex items-center gap-1.5 text-sm text-zinc-400 border border-zinc-700 px-3 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
+                        >
+                          <Ban className="h-3.5 w-3.5" />
+                          Ablehnen
+                        </button>
+                      </form>
+                      <form action={`/api/leads/${id}/qualify`} method="POST">
+                        <button
+                          type="submit"
+                          className="flex items-center gap-1.5 text-sm bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-500 transition-colors"
+                        >
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          Qualifizieren
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-zinc-400">
+                    {company.isQualified
+                      ? "Dieser Lead wurde für den Relaunch-Pitch qualifiziert."
+                      : "Dieser Lead wurde nicht qualifiziert."}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Analyse-Scorecard */}
           {analysis ? (
@@ -382,17 +783,6 @@ export default async function LeadDetailPage({ params }: Params) {
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-zinc-500" />
                   <h3 className="text-sm font-semibold text-white">Analyse-Scorecard</h3>
-                </div>
-                <div className="flex items-center gap-2">
-                  {analysis.isQualified ? (
-                    <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
-                      <CheckCircle className="h-3 w-3" /> Qualifiziert
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs font-medium text-zinc-500">
-                      <XCircle className="h-3 w-3" /> Nicht qualifiziert
-                    </span>
-                  )}
                 </div>
               </div>
 
@@ -436,7 +826,7 @@ export default async function LeadDetailPage({ params }: Params) {
                           <CheckCircle className="h-3 w-3" /> Stärken
                         </p>
                         <ul className="space-y-1.5">
-                          {strengths.slice(0, 4).map((s, i) => (
+                          {strengths.slice(0, 4).map((s: string, i: number) => (
                             <li key={i} className="text-xs text-zinc-300 leading-snug flex items-start gap-1.5">
                               <span className="text-emerald-600 mt-0.5 shrink-0">·</span>
                               {s}
@@ -451,7 +841,7 @@ export default async function LeadDetailPage({ params }: Params) {
                           <XCircle className="h-3 w-3" /> Schwächen
                         </p>
                         <ul className="space-y-1.5">
-                          {weaknesses.slice(0, 5).map((w, i) => (
+                          {weaknesses.slice(0, 5).map((w: string, i: number) => (
                             <li key={i} className="text-xs text-zinc-300 leading-snug flex items-start gap-1.5">
                               <span className="text-red-600 mt-0.5 shrink-0">·</span>
                               {w}
@@ -470,7 +860,7 @@ export default async function LeadDetailPage({ params }: Params) {
                       <Zap className="h-3 w-3" /> Quick Wins — Sofortmaßnahmen
                     </p>
                     <div className="space-y-2">
-                      {quickWins.map((qw, i) => (
+                      {quickWins.map((qw: string, i: number) => (
                         <div key={i} className="flex items-start gap-2.5">
                           <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-amber-500/20 text-xs font-bold text-amber-400 mt-0.5">
                             {i + 1}
@@ -495,7 +885,7 @@ export default async function LeadDetailPage({ params }: Params) {
                   ? "Website wurde gecrawlt. KI-Analyse starten um Scores, Stärken und Schwächen zu sehen."
                   : "Erst die Website crawlen, dann analysieren — der Score und alle Insights erscheinen hier."}
               </p>
-              {crawl && (
+              {crawl && crawl.status === "COMPLETED" && (
                 <form action={`/api/leads/${id}/analyze`} method="POST" className="mt-4">
                   <button
                     type="submit"
@@ -516,12 +906,20 @@ export default async function LeadDetailPage({ params }: Params) {
                 <div className="flex items-center gap-2">
                   <LayoutTemplate className="h-4 w-4 text-teal-500" />
                   <h3 className="text-sm font-semibold text-white">Demo-Website</h3>
-                  <span className="text-xs text-zinc-600">v{latestSite.version}</span>
+                  <span className="text-xs text-zinc-600">
+                    v{latestSite.version}{latestSite.variant !== "A" ? `/${latestSite.variant}` : ""}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
+                  {latestSite.errorCode && (
+                    <span className="inline-flex items-center gap-1 rounded-md border border-red-500/25 bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-400">
+                      <AlertTriangle className="h-3 w-3" /> Fehler
+                    </span>
+                  )}
                   {latestSite.hasPlaceholders && (
                     <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400">
-                      <AlertTriangle className="h-3 w-3" /> Platzhalter
+                      <AlertTriangle className="h-3 w-3" /> 
+                      {latestSite.placeholderCount || ""} Platzhalter
                     </span>
                   )}
                   <Link
@@ -532,15 +930,79 @@ export default async function LeadDetailPage({ params }: Params) {
                   </Link>
                 </div>
               </div>
-              <div className="px-5 py-3 flex items-center gap-4 text-xs text-zinc-500">
-                <span>Stil: <span className="text-zinc-400">{latestSite.style.replace(/_/g, " ")}</span></span>
-                <span>Erstellt: <span className="text-zinc-400">{formatDate(latestSite.createdAt)}</span></span>
+              
+              {/* Zusammenfassung */}
+              {latestSite.summary && (
+                <div className="px-5 py-3 border-b border-zinc-800/50">
+                  <p className="text-xs text-zinc-400">{latestSite.summary}</p>
+                </div>
+              )}
+              
+              {/* Meta-Infos */}
+              <div className="px-5 py-3 grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-zinc-600">Stil:</span>{" "}
+                  <span className="text-zinc-400">{latestSite.style.replace(/_/g, " ")}</span>
+                </div>
+                <div>
+                  <span className="text-zinc-600">Status:</span>{" "}
+                  <span className={latestSite.status === "GENERATED" ? "text-emerald-400" : "text-zinc-400"}>
+                    {latestSite.status}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-zinc-600">Erstellt:</span>{" "}
+                  <span className="text-zinc-400">{formatDate(latestSite.createdAt)}</span>
+                </div>
+                {latestSite.generationTimeMs && (
+                  <div>
+                    <span className="text-zinc-600">Dauer:</span>{" "}
+                    <span className="text-zinc-400">{(latestSite.generationTimeMs / 1000).toFixed(1)}s</span>
+                  </div>
+                )}
                 {company.generatedSites.length > 1 && (
-                  <span className="text-zinc-600">{company.generatedSites.length} Versionen</span>
+                  <div className="col-span-2">
+                    <span className="text-zinc-600">Versionen:</span>{" "}
+                    <span className="text-zinc-400">{company.generatedSites.length} Varianten verfügbar</span>
+                  </div>
                 )}
               </div>
+              
+              {/* Fehler-Anzeige */}
+              {latestSite.errorCode && (
+                <div className="px-5 pb-3">
+                  <div className="rounded-lg bg-red-500/5 border border-red-500/20 p-3">
+                    <p className="text-xs text-red-400 font-medium">{latestSite.errorCode}</p>
+                    {latestSite.errorDetails && (
+                      <p className="text-xs text-zinc-500 mt-1">{latestSite.errorDetails}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Platzhalter-Warnung */}
+              {latestSite.hasPlaceholders && !latestSite.errorCode && (
+                <div className="px-5 pb-3">
+                  <div className="rounded-lg bg-amber-500/5 border border-amber-500/20 p-2">
+                    <p className="text-xs text-amber-400 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      Diese Demo enthält Platzhalter, die vor dem Versand geprüft werden müssen.
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Review-Info */}
+              {latestSite.reviewedAt && (
+                <div className="px-5 py-2 bg-emerald-500/5 border-t border-zinc-800">
+                  <p className="text-xs text-emerald-400">
+                    Geprüft am {formatDate(latestSite.reviewedAt)}
+                    {latestSite.reviewRating && ` • ${latestSite.reviewRating}/5 Sterne`}
+                  </p>
+                </div>
+              )}
             </div>
-          ) : analysis ? (
+          ) : analysis && company.isQualified ? (
             <div className="rounded-xl bg-zinc-900 border border-zinc-800 border-dashed p-6 flex flex-col items-center text-center">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800 mb-2.5">
                 <LayoutTemplate className="h-5 w-5 text-zinc-600" />
@@ -549,25 +1011,45 @@ export default async function LeadDetailPage({ params }: Params) {
               <p className="text-xs text-zinc-600 mt-1">
                 Demo-Website aus den Analyse-Daten generieren lassen.
               </p>
-              <form action={`/api/leads/${id}/generate-site`} method="POST" className="mt-3">
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 text-sm text-white border border-zinc-700 px-3 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
-                >
-                  <LayoutTemplate className="h-3.5 w-3.5" />
-                  Demo generieren
-                </button>
-              </form>
+              {wf.canGenerateSite && (
+                <form action={`/api/leads/${id}/generate-site`} method="POST" className="mt-3">
+                  <button
+                    type="submit"
+                    className="flex items-center gap-1.5 text-sm text-white border border-zinc-700 px-3 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
+                  >
+                    <LayoutTemplate className="h-3.5 w-3.5" />
+                    Demo generieren
+                  </button>
+                </form>
+              )}
+            </div>
+          ) : analysis && !company.isQualified ? (
+            <div className="rounded-xl bg-zinc-900 border border-zinc-800 border-dashed p-6 flex flex-col items-center text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800 mb-2.5">
+                <LayoutTemplate className="h-5 w-5 text-zinc-600" />
+              </div>
+              <p className="text-sm font-medium text-zinc-300">Demo nicht verfügbar</p>
+              <p className="text-xs text-zinc-600 mt-1">
+                Lead muss zuerst qualifiziert werden, bevor eine Demo erstellt werden kann.
+              </p>
             </div>
           ) : null}
 
           {/* Outreach-Entwurf */}
           {latestDraft ? (
-            <div className="rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden">
+            <div id="outreach" className="rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden">
               <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
                 <div className="flex items-center gap-2">
                   <Send className="h-4 w-4 text-sky-500" />
                   <h3 className="text-sm font-semibold text-white">Outreach-Entwurf</h3>
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${
+                    latestDraft.status === "DRAFT" ? "bg-amber-500/10 text-amber-400" :
+                    latestDraft.status === "APPROVED" ? "bg-emerald-500/10 text-emerald-400" :
+                    latestDraft.status === "SENT" ? "bg-sky-500/10 text-sky-400" :
+                    "bg-zinc-800 text-zinc-400"
+                  }`}>
+                    {latestDraft.status}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   {latestDraft.isBlockedForSend && (
@@ -583,47 +1065,164 @@ export default async function LeadDetailPage({ params }: Params) {
                 </div>
               </div>
 
-              <div className="p-5 space-y-3">
-                {latestDraft.redFlags && (latestDraft.redFlags as unknown[]).length > 0 && (
-                  <div className="rounded-lg bg-red-500/5 border border-red-500/20 p-3 space-y-1.5">
-                    {(latestDraft.redFlags as Array<{ severity: string; description: string }>).map((flag, i) => (
-                      <p key={i} className="flex items-start gap-1.5 text-xs text-red-300">
-                        <AlertTriangle className="h-3 w-3 text-red-400 shrink-0 mt-0.5" />
-                        {flag.description}
+              <div className="p-5 space-y-4">
+                {/* Red Flags */}
+                {(() => {
+                  const redFlags = latestDraft.redFlags ? JSON.parse(latestDraft.redFlags) : [];
+                  return redFlags.length > 0 && (
+                    <div className="rounded-lg bg-red-500/5 border border-red-500/20 p-3 space-y-1.5">
+                      {redFlags.map((flag: { severity: string; description: string }, i: number) => (
+                        <p key={i} className="flex items-start gap-1.5 text-xs text-red-300">
+                          <AlertTriangle className="h-3 w-3 text-red-400 shrink-0 mt-0.5" />
+                          {flag.description}
+                        </p>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                {/* Empfänger */}
+                <div className="rounded-lg bg-zinc-800/30 border border-zinc-800 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-zinc-600">Empfänger</p>
+                    {latestDraft.status === "DRAFT" && (
+                      <Link
+                        href={`/outreach/${latestDraft.id}/edit`}
+                        className="text-xs text-blue-400 hover:text-blue-300"
+                      >
+                        Bearbeiten
+                      </Link>
+                    )}
+                  </div>
+                  <p className="text-sm font-medium text-white">
+                    {latestDraft.recipientName || company.name}
+                  </p>
+                  {latestDraft.recipientEmail && (
+                    <a href={`mailto:${latestDraft.recipientEmail}`} className="text-xs text-zinc-400 hover:text-white">
+                      {latestDraft.recipientEmail}
+                    </a>
+                  )}
+                  {latestDraft.recipientRole && (
+                    <p className="text-xs text-zinc-600 mt-0.5">{latestDraft.recipientRole}</p>
+                  )}
+                </div>
+
+                {/* Nachricht */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs text-zinc-600">Betreff</p>
+                  </div>
+                  <p className="text-sm font-medium text-white">{latestDraft.subject}</p>
+                </div>
+                
+                <div className="rounded-lg bg-zinc-800/50 border border-zinc-800 p-3">
+                  <p className="text-xs text-zinc-600 mb-2">Nachricht</p>
+                  <p className="text-xs text-zinc-400 whitespace-pre-line leading-relaxed">
+                    {truncate(latestDraft.body || "", 500)}
+                  </p>
+                  {latestDraft.body && latestDraft.body.length > 500 && (
+                    <Link
+                      href={`/outreach/${latestDraft.id}`}
+                      className="text-xs text-blue-400 hover:text-blue-300 mt-2 inline-block"
+                    >
+                      Vollständig anzeigen →
+                    </Link>
+                  )}
+                </div>
+
+                {/* Angebot */}
+                {(latestDraft.offerPriceRange || latestDraft.offerValidUntil) && (
+                  <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/20 p-3">
+                    <p className="text-xs text-emerald-600 mb-1">Angebot</p>
+                    {latestDraft.offerPriceRange && (
+                      <p className="text-sm font-medium text-emerald-400">{latestDraft.offerPriceRange}</p>
+                    )}
+                    {latestDraft.offerValidUntil && (
+                      <p className="text-xs text-zinc-500">
+                        Gültig bis {formatDate(latestDraft.offerValidUntil)}
                       </p>
-                    ))}
+                    )}
                   </div>
                 )}
 
-                {latestDraft.subject && (
-                  <div>
-                    <p className="text-xs text-zinc-600 mb-0.5">Betreff</p>
-                    <p className="text-sm font-medium text-white">{latestDraft.subject}</p>
-                  </div>
-                )}
-                {latestDraft.body && (
-                  <div className="rounded-lg bg-zinc-800/50 border border-zinc-800 p-3">
-                    <p className="text-xs text-zinc-400 whitespace-pre-line leading-relaxed">
-                      {truncate(latestDraft.body, 500)}
+                {/* Edit-History (nur wenn bearbeitet) */}
+                {latestDraft.editCount > 0 && (
+                  <div className="rounded-lg bg-zinc-800/30 p-2">
+                    <p className="text-xs text-zinc-600">
+                      {latestDraft.editCount}x bearbeitet
+                      {latestDraft.lastEditedAt && ` • Letzte Änderung ${formatDateTime(latestDraft.lastEditedAt)}`}
                     </p>
                   </div>
                 )}
 
+                {/* Action Buttons je nach Status */}
                 {latestDraft.status === "DRAFT" && (
-                  <form action={`/api/outreach/${latestDraft.id}/approve`} method="POST">
-                    <button
-                      type="submit"
-                      disabled={latestDraft.isBlockedForSend || latestDraft.hasUnreviewedPlaceholders}
-                      className="flex items-center gap-1.5 text-sm font-medium bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                      Freigeben
-                    </button>
-                  </form>
+                  <div className="flex gap-2">
+                    <form action={`/api/outreach/${latestDraft.id}/approve`} method="POST" className="flex-1">
+                      <button
+                        type="submit"
+                        disabled={latestDraft.isBlockedForSend || latestDraft.hasUnreviewedPlaceholders}
+                        className="w-full flex items-center justify-center gap-1.5 text-sm font-medium bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <ShieldCheck className="h-4 w-4" />
+                        Freigeben
+                      </button>
+                    </form>
+                  </div>
+                )}
+
+                {latestDraft.status === "APPROVED" && (
+                  <div className="flex gap-2">
+                    <form action={`/api/outreach/${latestDraft.id}/send`} method="POST" className="flex-1">
+                      <button
+                        type="submit"
+                        className="w-full flex items-center justify-center gap-1.5 text-sm font-medium bg-sky-600 text-white px-4 py-2 rounded-lg hover:bg-sky-500 transition-colors"
+                      >
+                        <Send className="h-4 w-4" />
+                        Versenden
+                      </button>
+                    </form>
+                  </div>
+                )}
+
+                {/* Freigabe-Historie */}
+                {latestDraft.approvedAt && (
+                  <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/20 p-3">
+                    <p className="text-xs text-emerald-400 flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3" />
+                      Freigegeben am {formatDateTime(latestDraft.approvedAt)}
+                      {latestDraft.approvedBy && ` von ${latestDraft.approvedBy}`}
+                    </p>
+                    {latestDraft.approvalNotes && (
+                      <p className="text-xs text-zinc-500 mt-1 ml-4">{latestDraft.approvalNotes}</p>
+                    )}
+                  </div>
+                )}
+
+                {latestDraft.rejectedAt && (
+                  <div className="rounded-lg bg-red-500/5 border border-red-500/20 p-3">
+                    <p className="text-xs text-red-400 flex items-center gap-1">
+                      <XCircle className="h-3 w-3" />
+                      Abgelehnt am {formatDateTime(latestDraft.rejectedAt)}
+                    </p>
+                    {latestDraft.rejectionReason && (
+                      <p className="text-xs text-zinc-500 mt-1 ml-4">{latestDraft.rejectionReason}</p>
+                    )}
+                  </div>
+                )}
+
+                {latestDraft.status === "SENT" && latestDraft.sentAt && (
+                  <div className="rounded-lg bg-sky-500/5 border border-sky-500/20 p-3">
+                    <p className="text-xs text-sky-400 flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3" />
+                      Versendet am {formatDateTime(latestDraft.sentAt)}
+                      {latestDraft.sentBy && ` von ${latestDraft.sentBy}`}
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
-          ) : analysis ? (
+          ) : analysis && company.isQualified && latestSite ? (
             <div className="rounded-xl bg-zinc-900 border border-zinc-800 border-dashed p-6 flex flex-col items-center text-center">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800 mb-2.5">
                 <Send className="h-5 w-5 text-zinc-600" />
@@ -632,49 +1231,24 @@ export default async function LeadDetailPage({ params }: Params) {
               <p className="text-xs text-zinc-600 mt-1">
                 KI generiert eine personalisierte Kontaktmail auf Basis der Analyse.
               </p>
-              <form action={`/api/leads/${id}/generate-outreach`} method="POST" className="mt-3">
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 text-sm text-white border border-zinc-700 px-3 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
-                >
-                  <Send className="h-3.5 w-3.5" />
-                  Outreach generieren
-                </button>
-              </form>
+              {wf.canGenerateOutreach && (
+                <form action={`/api/leads/${id}/generate-outreach`} method="POST" className="mt-3">
+                  <button
+                    type="submit"
+                    className="flex items-center gap-1.5 text-sm text-white border border-zinc-700 px-3 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    Outreach generieren
+                  </button>
+                </form>
+              )}
             </div>
           ) : null}
         </div>
       </div>
 
-      {/* ── VERLAUF ──────────────────────────────────────────────────────── */}
-      <div className="rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden">
-        <div className="flex items-center gap-2 px-5 py-4 border-b border-zinc-800">
-          <Activity className="h-4 w-4 text-zinc-600" />
-          <h3 className="text-sm font-semibold text-white">Pipeline-Verlauf</h3>
-        </div>
-
-        {company.pipelineStates.length === 0 ? (
-          <div className="flex flex-col items-center py-8 text-center">
-            <Clock className="h-5 w-5 text-zinc-700 mb-2" />
-            <p className="text-xs text-zinc-600">Noch keine Statuswechsel — Pipeline startet nach dem ersten Crawl.</p>
-          </div>
-        ) : (
-          <div className="px-5 py-4 space-y-2">
-            {company.pipelineStates.map((state, i) => (
-              <div key={state.id} className="flex items-center gap-3">
-                <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${i === 0 ? "bg-white" : "bg-zinc-700"}`} />
-                <span className="text-xs text-zinc-600 tabular-nums w-36 shrink-0">
-                  {formatDateTime(state.createdAt)}
-                </span>
-                <StatusBadge status={state.toStatus} />
-                {state.reason && (
-                  <span className="text-xs text-zinc-600 truncate">{state.reason}</span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* ── TIMELINE / VERLAUF ───────────────────────────────────────────── */}
+      <TimelineSection events={allTimelineEvents as TimelineEvent[]} />
 
     </div>
   );
@@ -691,7 +1265,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ActionBtn({
+function WorkflowActionBtn({
   href,
   icon,
   label,
@@ -699,6 +1273,7 @@ function ActionBtn({
   primary,
   disabled,
   done,
+  pending,
 }: {
   href: string;
   icon: React.ReactNode;
@@ -707,16 +1282,19 @@ function ActionBtn({
   primary?: boolean;
   disabled?: boolean;
   done?: boolean;
+  pending?: boolean;
 }) {
   return (
     <form action={href} method="POST">
       <button
         type="submit"
-        disabled={disabled || done}
+        disabled={disabled || done || pending}
         title={hint}
         className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed ${
           done
             ? "bg-zinc-800/50 text-zinc-600 border border-zinc-800"
+            : pending
+            ? "bg-blue-500/20 text-blue-400 border border-blue-500/30 animate-pulse"
             : primary
             ? "bg-white text-zinc-900 hover:bg-zinc-100 shadow-sm"
             : disabled
@@ -724,10 +1302,52 @@ function ActionBtn({
             : "bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-zinc-700 hover:text-white"
         }`}
       >
-        {done ? <CheckCircle className="h-3.5 w-3.5 text-emerald-500" /> : icon}
+        {done ? <CheckCircle className="h-3.5 w-3.5 text-emerald-500" /> : pending ? <Clock className="h-3.5 w-3.5" /> : icon}
         {label}
         {done && <span className="text-xs text-zinc-700">✓</span>}
+        {pending && <span className="text-xs">...</span>}
       </button>
     </form>
   );
 }
+
+// ── Helper für Timeline ───────────────────────────────────────────────────────
+
+function getAuditTitle(action: string): string {
+  const titles: Record<string, string> = {
+    "outreach.approved": "Outreach freigegeben",
+    "outreach.sent": "Outreach versendet",
+    "outreach.rejected": "Outreach abgelehnt",
+    "site.generated": "Demo-Website erstellt",
+    "analysis.completed": "Analyse abgeschlossen",
+    "crawl.completed": "Crawl abgeschlossen",
+    "lead.status_changed": "Status geändert",
+  };
+  return titles[action] || action;
+}
+
+function getAuditIcon(action: string): React.ReactNode {
+  if (action.includes("outreach")) return <Send className="h-3.5 w-3.5" />;
+  if (action.includes("site")) return <LayoutTemplate className="h-3.5 w-3.5" />;
+  if (action.includes("analysis")) return <TrendingUp className="h-3.5 w-3.5" />;
+  if (action.includes("crawl")) return <Globe className="h-3.5 w-3.5" />;
+  return <FileText className="h-3.5 w-3.5" />;
+}
+
+function getAuditColor(action: string, severity?: string | null): string {
+  // Severity hat Priorität
+  if (severity === "CRITICAL") return "text-red-500";
+  if (severity === "ERROR") return "text-red-400";
+  if (severity === "WARNING") return "text-amber-400";
+  
+  // Dann Action-basiert
+  if (action.includes("approved")) return "text-emerald-400";
+  if (action.includes("sent")) return "text-sky-400";
+  if (action.includes("rejected")) return "text-red-400";
+  if (action.includes("failed")) return "text-red-400";
+  if (action.includes("completed")) return "text-blue-400";
+  if (action.includes("started")) return "text-violet-400";
+  return "text-zinc-400";
+}
+
+
