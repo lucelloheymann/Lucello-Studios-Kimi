@@ -1,18 +1,12 @@
 import * as Sentry from "@sentry/nextjs";
 
-// Sentry client-side initialization for Next.js 15
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  
-  // Performance monitoring
-  tracesSampleRate: 1.0,
-  
-  // Debug
-  debug: true,
-  
-  // Environment
+  debug: process.env.NODE_ENV === "development",
   environment: process.env.NODE_ENV || "development",
+  tracesSampleRate: 1.0,
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1.0,
 });
-
-// Router transitions
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
