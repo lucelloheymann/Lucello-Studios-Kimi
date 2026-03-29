@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { useRouter } from "next/navigation";
 import { LeadStatus } from "@/types";
 import { INDUSTRIES, scoreToHex, formatDateTime, formatDate, cn } from "@/lib/utils";
@@ -228,6 +229,14 @@ export default function DashboardPage() {
               +{activityMeta.newLeads24h} heute
             </span>
           )}
+          <button
+            onClick={() => {
+              throw new Error("Sentry Client Test Error " + Date.now());
+            }}
+            className="flex items-center gap-1.5 rounded-lg bg-red-600 text-white px-3 py-1.5 text-sm font-medium hover:bg-red-700 transition-colors"
+          >
+            Test Error
+          </button>
           <Link
             href="/leads/new"
             className="flex items-center gap-1.5 rounded-lg bg-white text-zinc-900 px-3 py-1.5 text-sm font-medium hover:bg-zinc-100 transition-colors"

@@ -1,8 +1,15 @@
 import * as Sentry from "@sentry/nextjs";
 
-Sentry.init({
-  dsn: process.env.SENTRY_DSN,
-  debug: process.env.NODE_ENV === "development",
-  environment: process.env.NODE_ENV || "development",
-  tracesSampleRate: 1.0,
-});
+// Server-Konfiguration für Sentry
+// Wird über instrumentation.ts geladen (falls diese funktioniert)
+
+const DSN = process.env.SENTRY_DSN;
+
+if (DSN) {
+  Sentry.init({
+    dsn: DSN,
+    debug: false,
+    environment: process.env.NODE_ENV || "development",
+    tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+  });
+}
