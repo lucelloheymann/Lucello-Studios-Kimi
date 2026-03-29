@@ -293,6 +293,9 @@ export async function sendOutreach(
     // (z.B. wenn dieselbe Firma mehrfach kontaktiert wird)
     console.warn(`[outreach] Could not create conversation: ${err instanceof Error ? err.message : err}`);
   }
+
+  // Return success result
+  return result;
 }
 
 // ─── Bearbeitung ──────────────────────────────────────────────────────────────
