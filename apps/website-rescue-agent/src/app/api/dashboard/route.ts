@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { LeadStatus } from "@/types";
+import { LeadStatus, ACTIVE_CONVERSATION_STATUSES, ReplySentiment } from "@/types";
 
 export async function GET() {
   const session = await auth();
@@ -102,6 +102,22 @@ export async function GET() {
     
     // ─── HIGH-VALUE LEADS (Opportunity Score) ───────────────────────────
     highValueLeads,
+    
+    // ─── CONVERSATION STATS ─────────────────────────────────────────────
+    // Antworten heute
+    repliesToday,
+    // Antworten letzte 7 Tage
+    repliesLast7Days,
+    // Heute fällige Follow-ups
+    followUpsDueToday,
+    // Überfällige Follow-ups
+    overdueFollowUps,
+    // Offene Konversationen
+    openConversations,
+    // Positive Replies
+    positiveReplies,
+    // Dringende Follow-ups (Liste)
+    urgentFollowUps,
     
   ] = await Promise.all([
     // ─── BASIS ──────────────────────────────────────────────────────────
@@ -344,6 +360,95 @@ export async function GET() {
       },
       orderBy: { opportunityScore: "desc" },
       take: 5,
+    }),
+    
+    // ─── CONVERSATION STATS ─────────────────────────────────────────────
+    // Antworten heute
+    db.reply.count({
+      where: { receivedAt: { gte: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0) } },
+    }),
+    
+    // Antworten letzte 7 Tage
+    db.reply.count({
+      where: { receivedAt: { gte: last7Days } },
+    }),
+    
+    // Heute fällige Follow-ups
+    db.conversation.count({
+      where: {
+        status: { in: ACTIVE_CONVERSATION_STATUSES },
+        nextFollowUpDueAt: {
+          not: null,
+          lte: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59),
+          gte: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0),
+        },
+      },
+    }),
+    
+    // Überfällige Follow-ups
+    db.conversation.count({
+      where: {
+        status: { in: ACTIVE_CONVERSATION_STATUSES },
+        nextFollowUpDueAt: { not: null, lt: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0) },
+      },
+    }),
+    
+    // Offene Konversationen (aktive)
+    db.conversation.count({
+      where: { status: { in: ACTIVE_CONVERSATION_STATUSES } },
+    }),
+    
+    // Positive Replies
+    db.reply.count({
+      where: { sentiment: ReplySentiment.POSITIVE },
+    }),
+    
+    // Dringende Follow-ups (Liste) - NUR heute fällig oder überfällig
+    db.conversation.findMany({
+      where: {
+        status: { in: ACTIVE_CONVERSATION_STATUSES },
+        nextFollowUpDueAt: { 
+          not: null, 
+          lte: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59) // Bis Ende heute
+        },
+      },
+      include: {
+        company: {
+          select: {
+            id: true,
+            name: true,
+            domain: true,
+            opportunityScore: true,
+          },
+        },
+        replies: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+      orderBy: [
+        { nextFollowUpDueAt: "asc" },
+      ],
+      take: 10,
+    }).then(conversations => {
+      // Sortierung: Überfällig zuerst, dann Opportunity Score, dann lastContactAt
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime();
+      return conversations
+        .map(c => ({
+          ...c,
+          isOverdue: c.nextFollowUpDueAt!.getTime() < todayStart,
+          daysOverdue: c.nextFollowUpDueAt!.getTime() < todayStart
+            ? Math.floor((todayStart - c.nextFollowUpDueAt!.getTime()) / (1000 * 60 * 60 * 24))
+            : 0,
+          isToday: c.nextFollowUpDueAt!.getTime() >= todayStart,
+        }))
+        .sort((a, b) => {
+          // Zuerst überfällig
+          if (a.isOverdue && !b.isOverdue) return -1;
+          if (!a.isOverdue && b.isOverdue) return 1;
+          // Dann Opportunity Score (höher zuerst)
+          const scoreDiff = (b.company.opportunityScore || 0) - (a.company.opportunityScore || 0);
+          if (scoreDiff !== 0) return scoreDiff;
+          // Dann lastContactAt (älter zuerst)
+          return a.lastContactAt.getTime() - b.lastContactAt.getTime();
+        });
     }),
   ]);
 
@@ -730,6 +835,35 @@ export async function GET() {
       newApprovals24h,
       newBlocks24h,
     },
+    
+    // ─── CONVERSATION KPIS ───
+    conversationStats: {
+      repliesToday,
+      repliesLast7Days,
+      followUpsDueToday,
+      overdueFollowUps,
+      openConversations,
+      positiveReplies,
+    },
+    
+    // ─── DRINGENDE FOLLOW-UPS ───
+    urgentFollowUps: urgentFollowUps.map(c => ({
+      id: c.id,
+      companyId: c.companyId,
+      companyName: c.company.name,
+      companyDomain: c.company.domain,
+      opportunityScore: c.company.opportunityScore,
+      status: c.status,
+      followUpCount: c.followUpCount,
+      nextFollowUpDueAt: c.nextFollowUpDueAt,
+      lastContactAt: c.lastContactAt,
+      isOverdue: c.nextFollowUpDueAt! < new Date(),
+      daysOverdue: c.nextFollowUpDueAt! < new Date() 
+        ? Math.floor((new Date().getTime() - c.nextFollowUpDueAt!.getTime()) / (1000 * 60 * 60 * 24))
+        : 0,
+      currentSentiment: c.currentSentiment,
+      lastReplyContent: c.replies[0]?.content || null,
+    })),
   });
 }
 

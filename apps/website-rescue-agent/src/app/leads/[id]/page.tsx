@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { TimelineSection, TimelineEvent } from "@/components/timeline/timeline-section";
+import { ConversationSection } from "./conversation-section";
 import { IconWrapper } from "@/components/ui/icon-wrapper";
 import {
   STATUS_LABELS,
@@ -368,6 +369,14 @@ export default async function LeadDetailPage({ params }: Params) {
       pipelineStates: { orderBy: { createdAt: "desc" }, take: 20 },
       auditLogs: { orderBy: { createdAt: "desc" }, take: 20 },
       followUpTasks: { where: { completedAt: null }, orderBy: { dueAt: "asc" } },
+      conversations: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        include: {
+          replies: { orderBy: { createdAt: "desc" } },
+          followUps: { orderBy: { sequenceNumber: "asc" } },
+        },
+      },
     },
   });
 
@@ -437,7 +446,7 @@ export default async function LeadDetailPage({ params }: Params) {
   ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   return (
-    <div className="p-6 max-w-7xl space-y-5">
+    <div className="p-6 max-w-7xl space-y-5" suppressHydrationWarning>
 
       {/* ── Zurück-Link ──────────────────────────────────────────────────── */}
       <Link
@@ -1312,6 +1321,12 @@ export default async function LeadDetailPage({ params }: Params) {
           ) : null}
         </div>
       </div>
+
+      {/* ── CONVERSATION ─────────────────────────────────────────────────── */}
+      <ConversationSection 
+        companyId={company.id} 
+        conversation={(company.conversations[0] as any) || null} 
+      />
 
       {/* ── TIMELINE / VERLAUF ───────────────────────────────────────────── */}
       <TimelineSection events={allTimelineEvents as TimelineEvent[]} />

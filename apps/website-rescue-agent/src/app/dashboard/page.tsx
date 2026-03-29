@@ -115,6 +115,34 @@ interface DashboardData {
     newApprovals24h: number;
     newBlocks24h: number;
   };
+  
+  // Conversation Stats
+  conversationStats: {
+    repliesToday: number;
+    repliesLast7Days: number;
+    followUpsDueToday: number;
+    overdueFollowUps: number;
+    openConversations: number;
+    positiveReplies: number;
+  };
+  
+  // Urgent Follow-ups
+  urgentFollowUps: {
+    id: string;
+    companyId: string;
+    companyName: string;
+    companyDomain: string;
+    opportunityScore: number | null;
+    status: string;
+    followUpCount: number;
+    nextFollowUpDueAt: string;
+    lastContactAt: string;
+    isOverdue: boolean;
+    daysOverdue: number;
+    isToday: boolean;
+    currentSentiment: string | null;
+    lastReplyContent: string | null;
+  }[];
 }
 
 const iconMap: Record<string, React.ElementType> = {
@@ -167,7 +195,8 @@ export default function DashboardPage() {
   const { 
     session, totalLeads, statusCounts, avgScore, avgOpportunityScore,
     topIndustries, recentLeads, actionItems, todayTodos, workflowCounts,
-    outreachStats, errors, stuckLeads, highValueLeads, recentActivity, activityMeta
+    outreachStats, errors, stuckLeads, highValueLeads, recentActivity, activityMeta,
+    conversationStats, urgentFollowUps
   } = data;
 
   const statusMap = Object.fromEntries(statusCounts.map((s) => [s.status, s._count.status]));
@@ -364,6 +393,77 @@ export default function DashboardPage() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
+          CONVERSATION KPIs
+          ═══════════════════════════════════════════════════════════════════ */}
+      <section>
+        <div className="flex items-center gap-2 mb-3">
+          <IconWrapper icon={MessageSquare} className="h-4 w-4 text-emerald-400" />
+          <h2 className="text-sm font-semibold text-white">Conversation & Follow-ups</h2>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          {/* Offene Konversationen */}
+          <KpiCard 
+            label="Offen" 
+            value={conversationStats.openConversations}
+            icon={<IconWrapper icon={MessageSquare} className="h-4 w-4" />}
+            context="Aktive Conversations"
+            href="/outreach"
+            accent="emerald"
+          />
+          
+          {/* Antworten heute */}
+          <KpiCard 
+            label="Antworten heute" 
+            value={conversationStats.repliesToday}
+            icon={<IconWrapper icon={CheckCircle} className="h-4 w-4" />}
+            context="Neue Replies"
+            href="/outreach"
+            accent={conversationStats.repliesToday > 0 ? "emerald" : "zinc"}
+          />
+          
+          {/* Antworten 7 Tage */}
+          <KpiCard 
+            label="Antworten 7d" 
+            value={conversationStats.repliesLast7Days}
+            icon={<IconWrapper icon={TrendingUp} className="h-4 w-4" />}
+            context="Letzte Woche"
+            href="/outreach"
+            accent="zinc"
+          />
+          
+          {/* Positive Replies */}
+          <KpiCard 
+            label="Positiv" 
+            value={conversationStats.positiveReplies}
+            icon={<IconWrapper icon={CheckCircle} className="h-4 w-4" />}
+            context="Positive Antworten"
+            href="/outreach"
+            accent={conversationStats.positiveReplies > 0 ? "emerald" : "zinc"}
+          />
+          
+          {/* Heute fällig */}
+          <KpiCard 
+            label="Heute fällig" 
+            value={conversationStats.followUpsDueToday}
+            icon={<IconWrapper icon={Clock} className="h-4 w-4" />}
+            context="Follow-ups"
+            href="/outreach"
+            accent={conversationStats.followUpsDueToday > 0 ? "amber" : "zinc"}
+          />
+          
+          {/* Überfällig */}
+          <KpiCard 
+            label="Überfällig" 
+            value={conversationStats.overdueFollowUps}
+            icon={<IconWrapper icon={AlertTriangle} className="h-4 w-4" />}
+            context={conversationStats.overdueFollowUps === 1 ? "Follow-up" : "Follow-ups"}
+            href="/outreach"
+            accent={conversationStats.overdueFollowUps > 0 ? "red" : "zinc"}
+          />
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
           ZWEI-SPALTEN: PIPELINE + OPERATIVE BLÖCKE
           ═══════════════════════════════════════════════════════════════════ */}
       <div className="grid gap-5 lg:grid-cols-3">
@@ -485,6 +585,92 @@ export default function DashboardPage() {
             >
               Alle ansehen <IconWrapper icon={ArrowRight} className="h-3 w-3" />
             </Link>
+          </div>
+
+          {/* Dringende Follow-ups */}
+          <div className="rounded-xl bg-zinc-900 border border-zinc-800 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-sm font-semibold text-white">Dringende Follow-ups</h2>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  {urgentFollowUps.length > 0 
+                    ? `${urgentFollowUps.filter(u => u.isOverdue).length} überfällig`
+                    : "Keine ausstehend"
+                  }
+                </p>
+              </div>
+              <IconWrapper icon={Clock} className="h-4 w-4 text-zinc-600" />
+            </div>
+            
+            {urgentFollowUps.length > 0 ? (
+              <div className="space-y-2 max-h-64 overflow-y-auto overflow-x-hidden" style={{ scrollbarWidth: 'thin' }}>
+                {urgentFollowUps.map((followUp) => (
+                  <Link
+                    key={followUp.id}
+                    href={`/leads/${followUp.companyId}`}
+                    className={cn(
+                      "block p-2.5 rounded-lg border transition-all hover:scale-[1.01] w-full",
+                      followUp.isOverdue 
+                        ? "bg-red-500/5 border-red-500/20 hover:border-red-500/40" 
+                        : "bg-zinc-800/50 border-zinc-800 hover:border-zinc-700"
+                    )}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium text-white truncate flex-1">
+                          {followUp.companyName}
+                        </span>
+                        {followUp.opportunityScore && (
+                          <span className="text-[10px] text-emerald-400 shrink-0">
+                            {Math.round(followUp.opportunityScore)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        <span className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded shrink-0",
+                          followUp.isOverdue 
+                            ? "bg-red-500/10 text-red-400" 
+                            : followUp.isToday
+                            ? "bg-amber-500/10 text-amber-400"
+                            : "bg-zinc-700 text-zinc-400"
+                        )}>
+                          {followUp.isOverdue 
+                            ? `${followUp.daysOverdue}d überfällig` 
+                            : followUp.isToday
+                            ? "Heute fällig"
+                            : "Bald fällig"
+                          }
+                        </span>
+                        <span className="text-[10px] text-zinc-500 shrink-0">
+                          #{followUp.followUpCount}
+                        </span>
+                      </div>
+                      {followUp.lastReplyContent && (
+                        <p className="text-[10px] text-zinc-500 mt-1.5 truncate italic max-w-full">
+                          &ldquo;{followUp.lastReplyContent}&rdquo;
+                        </p>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                <IconWrapper icon={CheckCircle} className="h-8 w-8 text-zinc-700 mb-2" />
+                <p className="text-xs text-zinc-500">Keine dringenden Follow-ups</p>
+                <p className="text-[10px] text-zinc-600 mt-0.5">Alle Conversations sind aktuell</p>
+              </div>
+            )}
+            
+            {urgentFollowUps.length > 0 && (
+              <Link 
+                href="/outreach"
+                className="flex items-center justify-center gap-1 mt-3 pt-3 border-t border-zinc-800 text-xs text-zinc-500 hover:text-white transition-colors"
+              >
+                Alle anzeigen <IconWrapper icon={ArrowRight} className="h-3 w-3" />
+              </Link>
+            )}
           </div>
         </div>
       </div>

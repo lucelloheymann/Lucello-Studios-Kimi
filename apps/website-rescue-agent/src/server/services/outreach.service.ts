@@ -14,6 +14,7 @@ import {
   logOutreachRejected,
   logOutreachSent,
 } from "./audit.service";
+import { ConversationService } from "./conversation.service";
 
 export async function generateOutreachDraft(
   companyId: string,
@@ -219,6 +220,20 @@ export async function sendOutreach(
 
   // Audit-Log: Versand
   await logOutreachSent(draft.companyId, outreachId, recipientEmail, userId);
+
+  // Conversation für Follow-up Management erstellen
+  try {
+    await ConversationService.createConversation(
+      draft.companyId,
+      outreachId,
+      new Date()
+    );
+    console.log(`[outreach] Conversation created for company ${draft.companyId}`);
+  } catch (err) {
+    // Wenn bereits eine aktive Conversation existiert, ist das okay
+    // (z.B. wenn dieselbe Firma mehrfach kontaktiert wird)
+    console.warn(`[outreach] Could not create conversation: ${err instanceof Error ? err.message : err}`);
+  }
 }
 
 // ─── Bearbeitung ──────────────────────────────────────────────────────────────
