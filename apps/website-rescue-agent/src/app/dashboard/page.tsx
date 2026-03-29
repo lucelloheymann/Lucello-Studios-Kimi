@@ -991,6 +991,7 @@ function KpiCard({
   return (
     <Link
       href={href}
+      data-testid={`kpi-${label.toLowerCase().replace(/\s+/g, '-').replace(/[äöü]/g, c => ({'ä': 'ae', 'ö': 'oe', 'ü': 'ue'})[c] || c)}`}
       className={`group rounded-xl bg-zinc-900 border border-zinc-800 p-4 transition-all hover:bg-zinc-900/80 ${accentBorder[accent]}`}
     >
       <div className="flex items-center justify-between">
@@ -1000,7 +1001,7 @@ function KpiCard({
         </div>
       </div>
       <div className="mt-2">
-        <span className="text-2xl font-bold text-white tabular-nums">{value}</span>
+        <span className="text-2xl font-bold text-white tabular-nums" data-testid="kpi-value">{value}</span>
         <p className="text-xs text-zinc-600 mt-0.5 truncate">{context}</p>
       </div>
     </Link>

@@ -85,9 +85,29 @@ export default function OutreachClient() {
   const [conversationFilter, setConversationFilter] = useState(searchParams.get("filter") || "all");
   const [searchQuery, setSearchQuery] = useState("");
   
-  // URL aktualisieren wenn Filter sich ändern
+  // Daten laden basierend auf URL-Parametern
+  useEffect(() => {
+    setLoading(true);
+    
+    // Filter immer aus URL lesen
+    const filterFromUrl = searchParams.get("filter") || "all";
+    setConversationFilter(filterFromUrl);
+    
+    if (activeTab === "outreach") {
+      fetch("/api/outreach")
+        .then((res) => res.json())
+        .then((data) => { setItems(data); setLoading(false); });
+    } else {
+      const params = new URLSearchParams();
+      if (filterFromUrl !== "all") params.set("filter", filterFromUrl);
+      fetch(`/api/conversations?${params.toString()}`)
+        .then((res) => res.json())
+        .then((data) => { setConversations(data); setLoading(false); });
+    }
+  }, [activeTab, searchParams]); // Nur bei Tab-Wechsel oder URL-Änderung laden
+
+  // Filter-Button Handler - aktualisiert nur die URL
   const updateConversationFilter = (filter: string) => {
-    setConversationFilter(filter);
     const params = new URLSearchParams(searchParams.toString());
     params.set("view", "conversations");
     if (filter === "all") {
@@ -95,30 +115,8 @@ export default function OutreachClient() {
     } else {
       params.set("filter", filter);
     }
-    router.push(`/outreach?${params.toString()}`);
+    router.push(`/outreach?${params.toString()}`, { scroll: false });
   };
-
-  // Reagiere auf URL-Änderungen
-  useEffect(() => {
-    const filterFromUrl = searchParams.get("filter") || "all";
-    setConversationFilter(filterFromUrl);
-  }, [searchParams]);
-
-  // Daten laden
-  useEffect(() => {
-    setLoading(true);
-    if (activeTab === "outreach") {
-      fetch("/api/outreach")
-        .then((res) => res.json())
-        .then((data) => { setItems(data); setLoading(false); });
-    } else {
-      const params = new URLSearchParams();
-      if (conversationFilter !== "all") params.set("filter", conversationFilter);
-      fetch(`/api/conversations?${params.toString()}`)
-        .then((res) => res.json())
-        .then((data) => { setConversations(data); setLoading(false); });
-    }
-  }, [activeTab, conversationFilter]);
 
   // Filter anwenden
   const filteredItems = items.filter((item) => {
@@ -178,11 +176,21 @@ export default function OutreachClient() {
             {activeTab === "outreach" ? "Entwürfe verwalten, freigeben und versenden" : "Conversations bearbeiten und Follow-ups managen"}
           </p>
         </div>
-        <div className="flex items-center gap-1 rounded-lg bg-zinc-900 border border-zinc-800 p-1">
-          <button onClick={() => { setActiveTab("outreach"); router.push("/outreach"); }} className={cn("px-3 py-1.5 text-xs font-medium rounded-md transition-colors", activeTab === "outreach" ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}>
+        <div className="flex items-center gap-1 rounded-lg bg-zinc-900 border border-zinc-800 p-1" data-testid="outreach-tabs">
+          <button 
+            data-testid="tab-outreach" 
+            data-active={activeTab === "outreach"}
+            onClick={() => { setActiveTab("outreach"); router.push("/outreach"); }} 
+            className={cn("px-3 py-1.5 text-xs font-medium rounded-md transition-colors", activeTab === "outreach" ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}
+          >
             Entwürfe
           </button>
-          <button onClick={() => { setActiveTab("conversations"); router.push("/outreach?view=conversations"); }} className={cn("px-3 py-1.5 text-xs font-medium rounded-md transition-colors", activeTab === "conversations" ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}>
+          <button 
+            data-testid="tab-conversations" 
+            data-active={activeTab === "conversations"}
+            onClick={() => { setActiveTab("conversations"); router.push("/outreach?view=conversations"); }} 
+            className={cn("px-3 py-1.5 text-xs font-medium rounded-md transition-colors", activeTab === "conversations" ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}
+          >
             Conversations
           </button>
         </div>
@@ -287,10 +295,12 @@ function OutreachView({ items, stats, activeFilter, setActiveFilter, searchQuery
 function ConversationsView({ conversations, stats, activeFilter, setActiveFilter, searchQuery, setSearchQuery }: any) {
   return (
     <>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2" data-testid="conversation-filters">
         {conversationFilters.map((f) => (
           <button
             key={f.key}
+            data-testid={`filter-${f.key}`}
+            data-active={activeFilter === f.key}
             onClick={() => setActiveFilter(f.key)}
             className={cn(
               "px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors",
@@ -305,7 +315,7 @@ function ConversationsView({ conversations, stats, activeFilter, setActiveFilter
             )}
           >
             {f.label}
-            <span className="ml-1.5 text-zinc-600">
+            <span className="ml-1.5 text-zinc-600" data-testid={`count-${f.key}`}>
               {f.key === "all" ? stats.total : f.key === "active" ? stats.active : f.key === "replied" ? stats.replied : f.key === "due-today" ? stats.dueToday : f.key === "overdue" ? stats.overdue : f.key === "positive" ? stats.positive : f.key === "negative" ? stats.negative : f.key === "closed" ? stats.closed : 0}
             </span>
           </button>
