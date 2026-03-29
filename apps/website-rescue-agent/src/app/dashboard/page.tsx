@@ -407,7 +407,7 @@ export default function DashboardPage() {
             value={conversationStats.openConversations}
             icon={<IconWrapper icon={MessageSquare} className="h-4 w-4" />}
             context="Aktive Conversations"
-            href="/outreach"
+            href="/outreach?view=conversations&filter=active"
             accent="emerald"
           />
           
@@ -417,7 +417,7 @@ export default function DashboardPage() {
             value={conversationStats.repliesToday}
             icon={<IconWrapper icon={CheckCircle} className="h-4 w-4" />}
             context="Neue Replies"
-            href="/outreach"
+            href="/outreach?view=conversations&filter=replied"
             accent={conversationStats.repliesToday > 0 ? "emerald" : "zinc"}
           />
           
@@ -427,7 +427,7 @@ export default function DashboardPage() {
             value={conversationStats.repliesLast7Days}
             icon={<IconWrapper icon={TrendingUp} className="h-4 w-4" />}
             context="Letzte Woche"
-            href="/outreach"
+            href="/outreach?view=conversations"
             accent="zinc"
           />
           
@@ -437,7 +437,7 @@ export default function DashboardPage() {
             value={conversationStats.positiveReplies}
             icon={<IconWrapper icon={CheckCircle} className="h-4 w-4" />}
             context="Positive Antworten"
-            href="/outreach"
+            href="/outreach?view=conversations&filter=positive"
             accent={conversationStats.positiveReplies > 0 ? "emerald" : "zinc"}
           />
           
@@ -447,7 +447,7 @@ export default function DashboardPage() {
             value={conversationStats.followUpsDueToday}
             icon={<IconWrapper icon={Clock} className="h-4 w-4" />}
             context="Follow-ups"
-            href="/outreach"
+            href="/outreach?view=conversations&filter=due-today"
             accent={conversationStats.followUpsDueToday > 0 ? "amber" : "zinc"}
           />
           
@@ -457,7 +457,7 @@ export default function DashboardPage() {
             value={conversationStats.overdueFollowUps}
             icon={<IconWrapper icon={AlertTriangle} className="h-4 w-4" />}
             context={conversationStats.overdueFollowUps === 1 ? "Follow-up" : "Follow-ups"}
-            href="/outreach"
+            href="/outreach?view=conversations&filter=overdue"
             accent={conversationStats.overdueFollowUps > 0 ? "red" : "zinc"}
           />
         </div>
@@ -665,7 +665,7 @@ export default function DashboardPage() {
             
             {urgentFollowUps.length > 0 && (
               <Link 
-                href="/outreach"
+                href="/outreach?view=conversations"
                 className="flex items-center justify-center gap-1 mt-3 pt-3 border-t border-zinc-800 text-xs text-zinc-500 hover:text-white transition-colors"
               >
                 Alle anzeigen <IconWrapper icon={ArrowRight} className="h-3 w-3" />
