@@ -1,0 +1,112 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - img [ref=e6]
+        - generic [ref=e8]:
+          - paragraph [ref=e9]: Rescue Agent
+          - paragraph [ref=e10]: Lucello Studio
+      - navigation [ref=e11]:
+        - link "Dashboard" [ref=e12] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e13]
+          - text: Dashboard
+        - link "Leads" [ref=e18] [cursor=pointer]:
+          - /url: /leads
+          - img [ref=e19]
+          - text: Leads
+        - link "Outreach" [ref=e24] [cursor=pointer]:
+          - /url: /outreach
+          - img [ref=e25]
+          - text: Outreach
+        - link "Templates" [ref=e28] [cursor=pointer]:
+          - /url: /templates
+          - img [ref=e29]
+          - text: Templates
+        - link "Logs" [ref=e32] [cursor=pointer]:
+          - /url: /logs
+          - img [ref=e33]
+          - text: Logs
+        - link "Einstellungen" [ref=e36] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e37]
+          - text: Einstellungen
+      - paragraph [ref=e43]: Kein Versand ohne Freigabe
+    - generic [ref=e44]:
+      - banner [ref=e45]:
+        - generic [ref=e46]:
+          - generic [ref=e47]:
+            - generic [ref=e48]: DU
+            - generic [ref=e49]: Demo User
+          - button "Abmelden" [ref=e51] [cursor=pointer]:
+            - img [ref=e52]
+            - text: Abmelden
+      - main [ref=e55]:
+        - generic [ref=e56]:
+          - generic [ref=e57]:
+            - generic [ref=e58]:
+              - heading "Outreach" [level=1] [ref=e59]
+              - paragraph [ref=e60]: Conversations bearbeiten und Follow-ups managen
+            - generic [ref=e61]:
+              - button "Entwürfe" [ref=e62] [cursor=pointer]
+              - button "Conversations" [ref=e63] [cursor=pointer]
+          - generic [ref=e64]:
+            - button "Alle2" [ref=e65] [cursor=pointer]
+            - button "Aktiv0" [ref=e66] [cursor=pointer]
+            - button "Antworten0" [ref=e67] [cursor=pointer]
+            - button "Heute fällig0" [ref=e68] [cursor=pointer]
+            - button "Überfällig0" [ref=e69] [cursor=pointer]
+            - button "Positiv1" [ref=e70] [cursor=pointer]
+            - button "Negativ0" [ref=e71] [cursor=pointer]
+            - button "Abgeschlossen2" [ref=e72] [cursor=pointer]
+          - generic [ref=e73]:
+            - generic [ref=e74]:
+              - img [ref=e75]
+              - textbox "Firma oder Domain suchen..." [ref=e78]
+            - generic [ref=e79]:
+              - img [ref=e80]
+              - text: 2 von 2
+          - generic [ref=e82]:
+            - generic [ref=e83]:
+              - generic [ref=e84]: Lead
+              - generic [ref=e85]: Status
+              - generic [ref=e86]: Sentiment
+              - generic [ref=e87]: Follow-up
+              - generic [ref=e88]: Aktionen
+            - generic [ref=e89]:
+              - generic [ref=e90]:
+                - generic [ref=e91]:
+                  - generic [ref=e92]:
+                    - link "Schreinerei Wagner GmbH" [ref=e93] [cursor=pointer]:
+                      - /url: /leads/cmn9mkh5e0008m6vz8hy1dz47
+                    - generic [ref=e94]: "61"
+                  - paragraph [ref=e95]: schreinerei-wagner.de
+                - generic [ref=e97]: Keine Antwort
+                - generic [ref=e98]: —
+                - generic [ref=e99]: —
+                - generic [ref=e101]:
+                  - img [ref=e102]
+                  - text: Abgeschlossen
+              - generic [ref=e105]:
+                - generic [ref=e106]:
+                  - generic [ref=e107]:
+                    - link "Malerbetrieb Özdemir" [ref=e108] [cursor=pointer]:
+                      - /url: /leads/cmn9mkh700015m6vzbfnw7xrl
+                    - generic [ref=e109]: "63"
+                  - paragraph [ref=e110]: maler-oezdemir-stuttgart.de
+                  - paragraph [ref=e111]: “Wir sind interessiert. Bitte senden Sie uns ein Angebot für die neue Website.”
+                - generic [ref=e113]: Gewonnen
+                - generic [ref=e115]:
+                  - img [ref=e116]
+                  - text: Positiv
+                - generic [ref=e118]: —
+                - generic [ref=e120]:
+                  - img [ref=e121]
+                  - text: Abgeschlossen
+  - button "Open Next.js Dev Tools" [ref=e129] [cursor=pointer]:
+    - img [ref=e130]
+  - alert [ref=e133]
+```

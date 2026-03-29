@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { IconWrapper } from "@/components/ui/icon-wrapper";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatDate, formatDateTime, cn } from "@/lib/utils";
@@ -71,6 +71,7 @@ const conversationFilters = [
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default function OutreachClient() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<"outreach" | "conversations">(
     searchParams.get("view") === "conversations" ? "conversations" : "outreach"
@@ -83,6 +84,25 @@ export default function OutreachClient() {
   const [outreachFilter, setOutreachFilter] = useState(searchParams.get("status") || "ALL");
   const [conversationFilter, setConversationFilter] = useState(searchParams.get("filter") || "all");
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // URL aktualisieren wenn Filter sich ändern
+  const updateConversationFilter = (filter: string) => {
+    setConversationFilter(filter);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("view", "conversations");
+    if (filter === "all") {
+      params.delete("filter");
+    } else {
+      params.set("filter", filter);
+    }
+    router.push(`/outreach?${params.toString()}`);
+  };
+
+  // Reagiere auf URL-Änderungen
+  useEffect(() => {
+    const filterFromUrl = searchParams.get("filter") || "all";
+    setConversationFilter(filterFromUrl);
+  }, [searchParams]);
 
   // Daten laden
   useEffect(() => {
@@ -159,10 +179,10 @@ export default function OutreachClient() {
           </p>
         </div>
         <div className="flex items-center gap-1 rounded-lg bg-zinc-900 border border-zinc-800 p-1">
-          <button onClick={() => setActiveTab("outreach")} className={cn("px-3 py-1.5 text-xs font-medium rounded-md transition-colors", activeTab === "outreach" ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}>
+          <button onClick={() => { setActiveTab("outreach"); router.push("/outreach"); }} className={cn("px-3 py-1.5 text-xs font-medium rounded-md transition-colors", activeTab === "outreach" ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}>
             Entwürfe
           </button>
-          <button onClick={() => setActiveTab("conversations")} className={cn("px-3 py-1.5 text-xs font-medium rounded-md transition-colors", activeTab === "conversations" ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}>
+          <button onClick={() => { setActiveTab("conversations"); router.push("/outreach?view=conversations"); }} className={cn("px-3 py-1.5 text-xs font-medium rounded-md transition-colors", activeTab === "conversations" ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}>
             Conversations
           </button>
         </div>
@@ -171,7 +191,7 @@ export default function OutreachClient() {
       {activeTab === "outreach" ? (
         <OutreachView items={filteredItems} stats={outreachStats} activeFilter={outreachFilter} setActiveFilter={setOutreachFilter} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       ) : (
-        <ConversationsView conversations={filteredConversations} stats={conversationStats} activeFilter={conversationFilter} setActiveFilter={setConversationFilter} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+        <ConversationsView conversations={filteredConversations} stats={conversationStats} activeFilter={conversationFilter} setActiveFilter={updateConversationFilter} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       )}
     </div>
   );

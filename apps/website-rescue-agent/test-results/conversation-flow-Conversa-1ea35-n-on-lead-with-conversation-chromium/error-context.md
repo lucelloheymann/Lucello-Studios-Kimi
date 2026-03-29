@@ -1,0 +1,54 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - img [ref=e6]
+        - generic [ref=e8]:
+          - paragraph [ref=e9]: Rescue Agent
+          - paragraph [ref=e10]: Lucello Studio
+      - navigation [ref=e11]:
+        - link "Dashboard" [ref=e12] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e13]
+          - text: Dashboard
+        - link "Leads" [ref=e18] [cursor=pointer]:
+          - /url: /leads
+          - img [ref=e19]
+          - text: Leads
+        - link "Outreach" [ref=e24] [cursor=pointer]:
+          - /url: /outreach
+          - img [ref=e25]
+          - text: Outreach
+        - link "Templates" [ref=e28] [cursor=pointer]:
+          - /url: /templates
+          - img [ref=e29]
+          - text: Templates
+        - link "Logs" [ref=e32] [cursor=pointer]:
+          - /url: /logs
+          - img [ref=e33]
+          - text: Logs
+        - link "Einstellungen" [ref=e36] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e37]
+          - text: Einstellungen
+      - paragraph [ref=e43]: Kein Versand ohne Freigabe
+    - generic [ref=e44]:
+      - banner [ref=e45]:
+        - generic [ref=e46]:
+          - generic [ref=e47]:
+            - generic [ref=e48]: DU
+            - generic [ref=e49]: Demo User
+          - button "Abmelden" [ref=e51] [cursor=pointer]:
+            - img [ref=e52]
+            - text: Abmelden
+      - main [ref=e55]:
+        - generic [ref=e57]:
+          - heading "404" [level=1] [ref=e58]
+          - heading "This page could not be found." [level=2] [ref=e60]
+  - button "Open Next.js Dev Tools" [ref=e66] [cursor=pointer]:
+    - img [ref=e67]
+  - alert [ref=e70]: "404: This page could not be found."
+```

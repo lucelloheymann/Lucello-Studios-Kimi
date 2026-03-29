@@ -1,0 +1,542 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - img [ref=e6]
+        - generic [ref=e8]:
+          - paragraph [ref=e9]: Rescue Agent
+          - paragraph [ref=e10]: Lucello Studio
+      - navigation [ref=e11]:
+        - link "Dashboard" [ref=e12] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e13]
+          - text: Dashboard
+        - link "Leads" [ref=e18] [cursor=pointer]:
+          - /url: /leads
+          - img [ref=e19]
+          - text: Leads
+        - link "Outreach" [ref=e24] [cursor=pointer]:
+          - /url: /outreach
+          - img [ref=e25]
+          - text: Outreach
+        - link "Templates" [ref=e28] [cursor=pointer]:
+          - /url: /templates
+          - img [ref=e29]
+          - text: Templates
+        - link "Logs" [ref=e32] [cursor=pointer]:
+          - /url: /logs
+          - img [ref=e33]
+          - text: Logs
+        - link "Einstellungen" [ref=e36] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e37]
+          - text: Einstellungen
+      - paragraph [ref=e43]: Kein Versand ohne Freigabe
+    - generic [ref=e44]:
+      - banner [ref=e45]:
+        - generic [ref=e46]:
+          - generic [ref=e47]:
+            - generic [ref=e48]: DU
+            - generic [ref=e49]: Demo User
+          - button "Abmelden" [ref=e51] [cursor=pointer]:
+            - img [ref=e52]
+            - text: Abmelden
+      - main [ref=e55]:
+        - generic [ref=e56]:
+          - generic [ref=e57]:
+            - generic [ref=e58]:
+              - heading "Dashboard" [level=1] [ref=e59]
+              - paragraph [ref=e60]: Willkommen zurück, Demo User
+            - link "Neuer Lead" [ref=e62] [cursor=pointer]:
+              - /url: /leads/new
+              - img [ref=e63]
+              - text: Neuer Lead
+          - generic [ref=e64]:
+            - generic [ref=e65]:
+              - img [ref=e66]
+              - heading "Heute zu tun" [level=2] [ref=e68]
+              - generic [ref=e69]: — nach Priorität sortiert
+            - generic [ref=e70]:
+              - link "2 2 qualifizierte Lead ohne Kontakt Ergänzen" [ref=e71] [cursor=pointer]:
+                - /url: /leads?status=QUALIFIED&filter=missing-contacts
+                - generic [ref=e72]:
+                  - generic [ref=e73]: "2"
+                  - img [ref=e74]
+                - paragraph [ref=e76]: 2 qualifizierte Lead ohne Kontakt
+                - generic [ref=e77]:
+                  - text: Ergänzen
+                  - img [ref=e78]
+              - link "2 2 Leads bereit für Demo Generieren" [ref=e80] [cursor=pointer]:
+                - /url: /leads?status=QUALIFIED
+                - generic [ref=e81]:
+                  - generic [ref=e82]: "2"
+                  - img [ref=e83]
+                - paragraph [ref=e86]: 2 Leads bereit für Demo
+                - generic [ref=e87]:
+                  - text: Generieren
+                  - img [ref=e88]
+              - link "1 1 Lead bereit für Outreach Erstellen" [ref=e90] [cursor=pointer]:
+                - /url: /leads?status=SITE_GENERATED
+                - generic [ref=e91]:
+                  - generic [ref=e92]: "1"
+                  - img [ref=e93]
+                - paragraph [ref=e96]: 1 Lead bereit für Outreach
+                - generic [ref=e97]:
+                  - text: Erstellen
+                  - img [ref=e98]
+          - generic [ref=e100]:
+            - generic [ref=e101]:
+              - img [ref=e102]
+              - heading "Kritisch — sofortige Aktion nötig" [level=2] [ref=e104]
+            - generic [ref=e106]:
+              - img [ref=e108]
+              - generic [ref=e111]:
+                - generic [ref=e112]:
+                  - heading "2 qualifizierte Lead ohne Kontakt" [level=3] [ref=e113]
+                  - generic [ref=e114]: Qualifiziert aber keine E-Mail — Outreach unmöglich
+                - generic [ref=e115]:
+                  - link "Steuerberater Frank Lehmann" [ref=e116] [cursor=pointer]:
+                    - /url: /leads/cmn9mkh6l000xm6vzvl3i6z7s
+                  - link "Schreinerei Wagner GmbH" [ref=e117] [cursor=pointer]:
+                    - /url: /leads/cmn9mkh5e0008m6vz8hy1dz47
+              - link "Ergänzen" [ref=e118] [cursor=pointer]:
+                - /url: /leads?status=QUALIFIED&filter=missing-contacts
+          - generic [ref=e120]:
+            - link "Leads gesamt 10 2 qualifiziert" [ref=e121] [cursor=pointer]:
+              - /url: /leads
+              - generic [ref=e122]:
+                - generic [ref=e123]: Leads gesamt
+                - img [ref=e125]
+              - generic [ref=e130]:
+                - text: "10"
+                - paragraph [ref=e131]: 2 qualifiziert
+            - link "Freigabe offen 0 Bereit zum Review" [ref=e132] [cursor=pointer]:
+              - /url: /outreach?status=APPROVED
+              - generic [ref=e133]:
+                - generic [ref=e134]: Freigabe offen
+                - img [ref=e136]
+              - generic [ref=e139]:
+                - text: "0"
+                - paragraph [ref=e140]: Bereit zum Review
+            - link "Demo-Status 1 2 warten · 0 verzögert" [ref=e141] [cursor=pointer]:
+              - /url: /leads?status=QUALIFIED
+              - generic [ref=e142]:
+                - generic [ref=e143]: Demo-Status
+                - img [ref=e145]
+              - generic [ref=e149]:
+                - text: "1"
+                - paragraph [ref=e150]: 2 warten · 0 verzögert
+            - link "Gesendet 1 0 Antworten · 1 bereit" [ref=e151] [cursor=pointer]:
+              - /url: /outreach?status=SENT
+              - generic [ref=e152]:
+                - generic [ref=e153]: Gesendet
+                - img [ref=e155]
+              - generic [ref=e158]:
+                - text: "1"
+                - paragraph [ref=e159]: 0 Antworten · 1 bereit
+          - generic [ref=e160]:
+            - generic [ref=e161]:
+              - img [ref=e162]
+              - heading "Conversation & Follow-ups" [level=2] [ref=e164]
+            - generic [ref=e165]:
+              - link "Offen 2 Aktive Conversations" [ref=e166] [cursor=pointer]:
+                - /url: /outreach?view=conversations&filter=active
+                - generic [ref=e167]:
+                  - generic [ref=e168]: Offen
+                  - img [ref=e170]
+                - generic [ref=e172]:
+                  - text: "2"
+                  - paragraph [ref=e173]: Aktive Conversations
+              - link "Antworten heute 0 Neue Replies" [ref=e174] [cursor=pointer]:
+                - /url: /outreach?view=conversations&filter=replied
+                - generic [ref=e175]:
+                  - generic [ref=e176]: Antworten heute
+                  - img [ref=e178]
+                - generic [ref=e181]:
+                  - text: "0"
+                  - paragraph [ref=e182]: Neue Replies
+              - link "Antworten 7d 2 Letzte Woche" [ref=e183] [cursor=pointer]:
+                - /url: /outreach?view=conversations
+                - generic [ref=e184]:
+                  - generic [ref=e185]: Antworten 7d
+                  - img [ref=e187]
+                - generic [ref=e190]:
+                  - text: "2"
+                  - paragraph [ref=e191]: Letzte Woche
+              - link "Positiv 2 Positive Antworten" [ref=e192] [cursor=pointer]:
+                - /url: /outreach?view=conversations&filter=positive
+                - generic [ref=e193]:
+                  - generic [ref=e194]: Positiv
+                  - img [ref=e196]
+                - generic [ref=e199]:
+                  - text: "2"
+                  - paragraph [ref=e200]: Positive Antworten
+              - link "Heute fällig 1 Follow-ups" [ref=e201] [cursor=pointer]:
+                - /url: /outreach?view=conversations&filter=due-today
+                - generic [ref=e202]:
+                  - generic [ref=e203]: Heute fällig
+                  - img [ref=e205]
+                - generic [ref=e208]:
+                  - text: "1"
+                  - paragraph [ref=e209]: Follow-ups
+              - link "Überfällig 1 Follow-up" [ref=e210] [cursor=pointer]:
+                - /url: /outreach?view=conversations&filter=overdue
+                - generic [ref=e211]:
+                  - generic [ref=e212]: Überfällig
+                  - img [ref=e214]
+                - generic [ref=e216]:
+                  - text: "1"
+                  - paragraph [ref=e217]: Follow-up
+          - generic [ref=e218]:
+            - generic [ref=e219]:
+              - generic [ref=e220]:
+                - generic [ref=e221]:
+                  - heading "Pipeline" [level=2] [ref=e222]
+                  - paragraph [ref=e223]: 10 Leads · Ø Score 29 · Ø Opp 60
+                - img [ref=e224]
+              - generic [ref=e225]:
+                - link "Neu 1 10%" [ref=e226] [cursor=pointer]:
+                  - /url: /leads?status=NEW
+                  - generic [ref=e227]: Neu
+                  - generic [ref=e230]:
+                    - generic [ref=e231]: "1"
+                    - generic [ref=e232]: 10%
+                - link "Gecrawlt 1 10%" [ref=e233] [cursor=pointer]:
+                  - /url: /leads?status=CRAWLED
+                  - generic [ref=e234]: Gecrawlt
+                  - generic [ref=e237]:
+                    - generic [ref=e238]: "1"
+                    - generic [ref=e239]: 10%
+                - link "Analysiert 1 10%" [ref=e240] [cursor=pointer]:
+                  - /url: /leads?status=ANALYZED
+                  - generic [ref=e241]: Analysiert
+                  - generic [ref=e244]:
+                    - generic [ref=e245]: "1"
+                    - generic [ref=e246]: 10%
+                - link "Qualifiziert 2 20%" [ref=e247] [cursor=pointer]:
+                  - /url: /leads?status=QUALIFIED
+                  - generic [ref=e248]: Qualifiziert
+                  - generic [ref=e251]:
+                    - generic [ref=e252]: "2"
+                    - generic [ref=e253]: 20%
+                - link "Demo erstellt 1 10%" [ref=e254] [cursor=pointer]:
+                  - /url: /leads?status=SITE_GENERATED
+                  - generic [ref=e255]: Demo erstellt
+                  - generic [ref=e258]:
+                    - generic [ref=e259]: "1"
+                    - generic [ref=e260]: 10%
+                - link "Gesendet 1 10%" [ref=e261] [cursor=pointer]:
+                  - /url: /outreach?status=SENT
+                  - generic [ref=e262]: Gesendet
+                  - generic [ref=e265]:
+                    - generic [ref=e266]: "1"
+                    - generic [ref=e267]: 10%
+                - link "Gewonnen 1 10%" [ref=e268] [cursor=pointer]:
+                  - /url: /leads?status=WON
+                  - generic [ref=e269]: Gewonnen
+                  - generic [ref=e272]:
+                    - generic [ref=e273]: "1"
+                    - generic [ref=e274]: 10%
+              - generic [ref=e275]:
+                - generic [ref=e277]: 1 gewonnen
+                - link "Alle Leads" [ref=e278] [cursor=pointer]:
+                  - /url: /leads
+                  - text: Alle Leads
+                  - img [ref=e279]
+            - generic [ref=e281]:
+              - generic [ref=e282]:
+                - generic [ref=e283]:
+                  - heading "Workflow" [level=2] [ref=e284]
+                  - img [ref=e285]
+                - generic [ref=e287]:
+                  - link "Crawl ausstehend 1" [ref=e288] [cursor=pointer]:
+                    - /url: /leads?status=NEW
+                    - generic [ref=e289]: Crawl ausstehend
+                    - generic [ref=e290]: "1"
+                  - link "Analyse ausstehend 1" [ref=e291] [cursor=pointer]:
+                    - /url: /leads?status=CRAWLED
+                    - generic [ref=e292]: Analyse ausstehend
+                    - generic [ref=e293]: "1"
+                  - link "Demo bereit 2" [ref=e294] [cursor=pointer]:
+                    - /url: /leads?status=QUALIFIED
+                    - generic [ref=e295]: Demo bereit
+                    - generic [ref=e296]: "2"
+                  - link "Outreach bereit 1" [ref=e297] [cursor=pointer]:
+                    - /url: /leads?status=SITE_GENERATED
+                    - generic [ref=e298]: Outreach bereit
+                    - generic [ref=e299]: "1"
+              - generic [ref=e300]:
+                - generic [ref=e301]:
+                  - heading "Outreach" [level=2] [ref=e302]
+                  - img [ref=e303]
+                - link "Alle ansehen" [ref=e306] [cursor=pointer]:
+                  - /url: /outreach
+                  - text: Alle ansehen
+                  - img [ref=e307]
+              - generic [ref=e309]:
+                - generic [ref=e310]:
+                  - generic [ref=e311]:
+                    - heading "Dringende Follow-ups" [level=2] [ref=e312]
+                    - paragraph [ref=e313]: 1 überfällig
+                  - img [ref=e314]
+                - generic [ref=e317]:
+                  - 'link "Physiotherapie am Markt 57 1d überfällig #0" [ref=e318] [cursor=pointer]':
+                    - /url: /leads/cmn9mkh78001am6vzjmnjjpv9
+                    - generic [ref=e319]:
+                      - generic [ref=e320]:
+                        - generic [ref=e321]: Physiotherapie am Markt
+                        - generic [ref=e322]: "57"
+                      - generic [ref=e323]:
+                        - generic [ref=e324]: 1d überfällig
+                        - generic [ref=e325]: "#0"
+                  - 'link "Küchen-Design Klein 65 Bald fällig #1 “Vielen Dank für Ihre Nachricht! Das klingt sehr interessant. Können wir nächste Woche telefonieren?”" [ref=e326] [cursor=pointer]':
+                    - /url: /leads/cmn9mkh7i001fm6vzm0yzu9to
+                    - generic [ref=e327]:
+                      - generic [ref=e328]:
+                        - generic [ref=e329]: Küchen-Design Klein
+                        - generic [ref=e330]: "65"
+                      - generic [ref=e331]:
+                        - generic [ref=e332]: Bald fällig
+                        - generic [ref=e333]: "#1"
+                      - paragraph [ref=e334]: “Vielen Dank für Ihre Nachricht! Das klingt sehr interessant. Können wir nächste Woche telefonieren?”
+                - link "Alle anzeigen" [ref=e335] [cursor=pointer]:
+                  - /url: /outreach?view=conversations
+                  - text: Alle anzeigen
+                  - img [ref=e336]
+          - generic [ref=e338]:
+            - generic [ref=e339]:
+              - generic [ref=e340]:
+                - img [ref=e342]
+                - heading "Handlungsbedarf" [level=2] [ref=e346]
+                - generic [ref=e347]: "5"
+              - generic [ref=e348]: Nach Dringlichkeit sortiert
+            - generic [ref=e350]:
+              - generic [ref=e351]:
+                - img [ref=e353]
+                - generic [ref=e356]:
+                  - generic [ref=e357]:
+                    - paragraph [ref=e358]: 2 qualifizierte Lead ohne Kontakt
+                    - generic [ref=e359]: "2"
+                  - paragraph [ref=e360]: Qualifiziert aber keine E-Mail — Outreach unmöglich
+                  - generic [ref=e361]:
+                    - link "Steuerberater Frank Lehmann · Score 31" [ref=e362] [cursor=pointer]:
+                      - /url: /leads/cmn9mkh6l000xm6vzvl3i6z7s
+                      - text: Steuerberater Frank Lehmann
+                      - generic [ref=e363]: · Score 31
+                    - link "Schreinerei Wagner GmbH · Score 28" [ref=e364] [cursor=pointer]:
+                      - /url: /leads/cmn9mkh5e0008m6vz8hy1dz47
+                      - text: Schreinerei Wagner GmbH
+                      - generic [ref=e365]: · Score 28
+                - link "Ergänzen" [ref=e366] [cursor=pointer]:
+                  - /url: /leads?status=QUALIFIED&filter=missing-contacts
+                  - text: Ergänzen
+                  - img [ref=e367]
+              - generic [ref=e369]:
+                - img [ref=e371]
+                - generic [ref=e375]:
+                  - generic [ref=e376]:
+                    - paragraph [ref=e377]: 2 Leads bereit für Demo
+                    - generic [ref=e378]: "2"
+                  - paragraph [ref=e379]: Qualifiziert — Demo-Seite generieren
+                  - generic [ref=e380]:
+                    - link "Schreinerei Wagner GmbH · Score 28 · Opp 61" [ref=e381] [cursor=pointer]:
+                      - /url: /leads/cmn9mkh5e0008m6vz8hy1dz47
+                      - text: Schreinerei Wagner GmbH
+                      - generic [ref=e382]: · Score 28 · Opp 61
+                    - link "Steuerberater Frank Lehmann · Score 31 · Opp 59" [ref=e383] [cursor=pointer]:
+                      - /url: /leads/cmn9mkh6l000xm6vzvl3i6z7s
+                      - text: Steuerberater Frank Lehmann
+                      - generic [ref=e384]: · Score 31 · Opp 59
+                - link "Generieren" [ref=e385] [cursor=pointer]:
+                  - /url: /leads?status=QUALIFIED
+                  - text: Generieren
+                  - img [ref=e386]
+              - generic [ref=e388]:
+                - img [ref=e390]
+                - generic [ref=e393]:
+                  - generic [ref=e394]:
+                    - paragraph [ref=e395]: 1 Lead bereit für Outreach
+                    - generic [ref=e396]: "1"
+                  - paragraph [ref=e397]: Demo erstellt — Outreach generieren
+                  - link "Immobilien Braun & Partner · Score 35" [ref=e399] [cursor=pointer]:
+                    - /url: /leads/cmn9mkh5o000dm6vzdghkwdun
+                    - text: Immobilien Braun & Partner
+                    - generic [ref=e400]: · Score 35
+                - link "Erstellen" [ref=e401] [cursor=pointer]:
+                  - /url: /leads?status=SITE_GENERATED
+                  - text: Erstellen
+                  - img [ref=e402]
+              - generic [ref=e404]:
+                - img [ref=e406]
+                - generic [ref=e408]:
+                  - generic [ref=e409]:
+                    - paragraph [ref=e410]: 1 Lead warten auf Crawl
+                    - generic [ref=e411]: "1"
+                  - paragraph [ref=e412]: Website laden und analysieren
+                  - link "Fitness Center Nordlicht · fitness-nordlicht.de" [ref=e414] [cursor=pointer]:
+                    - /url: /leads/cmn9mkh6v0012m6vz6m8hbc6n
+                    - text: Fitness Center Nordlicht
+                    - generic [ref=e415]: · fitness-nordlicht.de
+                - link "Starten" [ref=e416] [cursor=pointer]:
+                  - /url: /leads?status=NEW
+                  - text: Starten
+                  - img [ref=e417]
+              - generic [ref=e419]:
+                - img [ref=e421]
+                - generic [ref=e423]:
+                  - generic [ref=e424]:
+                    - paragraph [ref=e425]: 1 Lead warten auf Analyse
+                    - generic [ref=e426]: "1"
+                  - paragraph [ref=e427]: Gecrawlt — Qualifizierung ausstehend
+                  - link "Elektro Steinmetz · elektro-steinmetz-dortmund.de" [ref=e429] [cursor=pointer]:
+                    - /url: /leads/cmn9mkh6d000sm6vzdusqtddv
+                    - text: Elektro Steinmetz
+                    - generic [ref=e430]: · elektro-steinmetz-dortmund.de
+                - link "Analysieren" [ref=e431] [cursor=pointer]:
+                  - /url: /leads?status=CRAWLED
+                  - text: Analysieren
+                  - img [ref=e432]
+          - generic [ref=e434]:
+            - generic [ref=e436]:
+              - img [ref=e437]
+              - heading "High-Value Leads" [level=2] [ref=e440]
+              - generic [ref=e441]: — nach Opportunity Score
+            - generic [ref=e442]:
+              - link "KA 22 Kanzlei Hoffmann & Richter kanzlei-hoffmann-richter.de Entwurf bereit Opp 66" [ref=e443] [cursor=pointer]:
+                - /url: /leads/cmn9mkh5w000im6vz0rm7pmu2
+                - generic [ref=e444]:
+                  - generic [ref=e445]: KA
+                  - generic [ref=e446]: "22"
+                - paragraph [ref=e447]: Kanzlei Hoffmann & Richter
+                - paragraph [ref=e448]: kanzlei-hoffmann-richter.de
+                - generic [ref=e449]:
+                  - generic [ref=e450]: Entwurf bereit
+                  - generic [ref=e451]: Opp 66
+              - link "SC 28 Schreinerei Wagner GmbH schreinerei-wagner.de Qualifiziert Opp 61" [ref=e452] [cursor=pointer]:
+                - /url: /leads/cmn9mkh5e0008m6vz8hy1dz47
+                - generic [ref=e453]:
+                  - generic [ref=e454]: SC
+                  - generic [ref=e455]: "28"
+                - paragraph [ref=e456]: Schreinerei Wagner GmbH
+                - paragraph [ref=e457]: schreinerei-wagner.de
+                - generic [ref=e458]:
+                  - generic [ref=e459]: Qualifiziert
+                  - generic [ref=e460]: Opp 61
+              - link "ST 31 Steuerberater Frank Lehmann stb-lehmann-frankfurt.de Qualifiziert Opp 59" [ref=e461] [cursor=pointer]:
+                - /url: /leads/cmn9mkh6l000xm6vzvl3i6z7s
+                - generic [ref=e462]:
+                  - generic [ref=e463]: ST
+                  - generic [ref=e464]: "31"
+                - paragraph [ref=e465]: Steuerberater Frank Lehmann
+                - paragraph [ref=e466]: stb-lehmann-frankfurt.de
+                - generic [ref=e467]:
+                  - generic [ref=e468]: Qualifiziert
+                  - generic [ref=e469]: Opp 59
+              - link "IM 35 Immobilien Braun & Partner braun-immobilien-hh.de Demo erstellt Opp 55" [ref=e470] [cursor=pointer]:
+                - /url: /leads/cmn9mkh5o000dm6vzdghkwdun
+                - generic [ref=e471]:
+                  - generic [ref=e472]: IM
+                  - generic [ref=e473]: "35"
+                - paragraph [ref=e474]: Immobilien Braun & Partner
+                - paragraph [ref=e475]: braun-immobilien-hh.de
+                - generic [ref=e476]:
+                  - generic [ref=e477]: Demo erstellt
+                  - generic [ref=e478]: Opp 55
+          - generic [ref=e479]:
+            - generic [ref=e480]:
+              - generic [ref=e481]:
+                - generic [ref=e482]:
+                  - heading "Neueste Leads" [level=2] [ref=e483]
+                  - paragraph
+                - link "Alle" [ref=e484] [cursor=pointer]:
+                  - /url: /leads
+                  - text: Alle
+                  - img [ref=e485]
+              - generic [ref=e487]:
+                - link "KK Küchen-Design Klein kuechen-klein.de 24 Gewonnen" [ref=e488] [cursor=pointer]:
+                  - /url: /leads/cmn9mkh7i001fm6vzm0yzu9to
+                  - generic [ref=e489]: KK
+                  - generic [ref=e490]:
+                    - paragraph [ref=e491]: Küchen-Design Klein
+                    - paragraph [ref=e492]: kuechen-klein.de
+                  - generic [ref=e493]: "24"
+                  - generic [ref=e494]: Gewonnen
+                - link "PA Physiotherapie am Markt physio-am-markt.de 33 Gesendet" [ref=e495] [cursor=pointer]:
+                  - /url: /leads/cmn9mkh78001am6vzjmnjjpv9
+                  - generic [ref=e496]: PA
+                  - generic [ref=e497]:
+                    - paragraph [ref=e498]: Physiotherapie am Markt
+                    - paragraph [ref=e499]: physio-am-markt.de
+                  - generic [ref=e500]: "33"
+                  - generic [ref=e501]: Gesendet
+                - link "MÖ Malerbetrieb Özdemir maler-oezdemir-stuttgart.de 26 In Prüfung" [ref=e502] [cursor=pointer]:
+                  - /url: /leads/cmn9mkh700015m6vzbfnw7xrl
+                  - generic [ref=e503]: MÖ
+                  - generic [ref=e504]:
+                    - paragraph [ref=e505]: Malerbetrieb Özdemir
+                    - paragraph [ref=e506]: maler-oezdemir-stuttgart.de
+                  - generic [ref=e507]: "26"
+                  - generic [ref=e508]: In Prüfung
+                - link "FC Fitness Center Nordlicht fitness-nordlicht.de — Neu" [ref=e509] [cursor=pointer]:
+                  - /url: /leads/cmn9mkh6v0012m6vz6m8hbc6n
+                  - generic [ref=e510]: FC
+                  - generic [ref=e511]:
+                    - paragraph [ref=e512]: Fitness Center Nordlicht
+                    - paragraph [ref=e513]: fitness-nordlicht.de
+                  - generic [ref=e514]: —
+                  - generic [ref=e515]: Neu
+                - link "SF Steuerberater Frank Lehmann stb-lehmann-frankfurt.de 31 Qualifiziert" [ref=e516] [cursor=pointer]:
+                  - /url: /leads/cmn9mkh6l000xm6vzvl3i6z7s
+                  - generic [ref=e517]: SF
+                  - generic [ref=e518]:
+                    - paragraph [ref=e519]: Steuerberater Frank Lehmann
+                    - paragraph [ref=e520]: stb-lehmann-frankfurt.de
+                  - generic [ref=e521]: "31"
+                  - generic [ref=e522]: Qualifiziert
+                - link "ES Elektro Steinmetz elektro-steinmetz-dortmund.de 19 Gecrawlt" [ref=e523] [cursor=pointer]:
+                  - /url: /leads/cmn9mkh6d000sm6vzdusqtddv
+                  - generic [ref=e524]: ES
+                  - generic [ref=e525]:
+                    - paragraph [ref=e526]: Elektro Steinmetz
+                    - paragraph [ref=e527]: elektro-steinmetz-dortmund.de
+                  - generic [ref=e528]: "19"
+                  - generic [ref=e529]: Gecrawlt
+            - generic [ref=e530]:
+              - generic [ref=e531]:
+                - generic [ref=e532]:
+                  - heading "Aktivität" [level=2] [ref=e533]
+                  - paragraph [ref=e534]: Letzte 7 Tage
+                - link "Logs" [ref=e535] [cursor=pointer]:
+                  - /url: /logs
+                  - text: Logs
+                  - img [ref=e536]
+              - generic [ref=e538]:
+                - img [ref=e539]
+                - paragraph [ref=e541]: Keine Aktivität
+          - generic [ref=e542]:
+            - generic [ref=e544]:
+              - img [ref=e545]
+              - heading "Top-Branchen" [level=2] [ref=e549]
+            - generic [ref=e550]:
+              - generic [ref=e551]:
+                - generic [ref=e552]: Handwerk
+                - generic [ref=e555]: "4"
+              - generic [ref=e556]:
+                - generic [ref=e557]: Arztpraxen / Gesundheit
+                - generic [ref=e560]: "2"
+              - generic [ref=e561]:
+                - generic [ref=e562]: Berater / Coaches
+                - generic [ref=e565]: "1"
+              - generic [ref=e566]:
+                - generic [ref=e567]: Fitness / Sport
+                - generic [ref=e570]: "1"
+              - generic [ref=e571]:
+                - generic [ref=e572]: Immobilienmakler
+                - generic [ref=e575]: "1"
+  - button "Open Next.js Dev Tools" [ref=e581] [cursor=pointer]:
+    - img [ref=e582]
+  - alert [ref=e585]
+```
