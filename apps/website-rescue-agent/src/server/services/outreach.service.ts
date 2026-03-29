@@ -148,67 +148,126 @@ export async function rejectOutreach(
 export async function sendOutreach(
   outreachId: string,
   userId: string
-): Promise<void> {
+): Promise<{ success: boolean; messageId?: string; error?: string; previewUrl?: string }> {
   const draft = await db.outreachDraft.findUniqueOrThrow({
     where: { id: outreachId },
     include: { company: { include: { contacts: true } } },
   });
 
-  // Sicherheitsprüfungen — keine Kompromisse
+  // ═══ GUARDRAILS — Keine Kompromisse ═══
+  
+  // 1. Muss freigegeben sein
   if (draft.status !== "APPROVED") {
     throw new Error("Versand nur nach expliziter Freigabe möglich");
   }
+  
+  // 2. Darf nicht blockiert sein
   if (draft.isBlockedForSend) {
     throw new Error(`Versand blockiert: ${draft.blockReason}`);
   }
+  
+  // 3. Keine unreviewten Platzhalter
+  if (draft.hasUnreviewedPlaceholders) {
+    throw new Error("Unreviewte Platzhalter vorhanden — bitte zuerst reviewen");
+  }
+  
+  // 4. Firma nicht blacklisted
   if (draft.company.isBlacklisted) {
     throw new Error("Firma ist auf der Blacklist");
   }
+  
+  // 5. Nicht bereits kontaktiert
   if (draft.company.isContacted) {
     throw new Error("Firma wurde bereits kontaktiert");
   }
-  if (draft.sentAt) {
+  
+  // 6. Nicht bereits versendet
+  if (draft.sentAt && draft.sentStatus === "SENT") {
     throw new Error("Diese Nachricht wurde bereits gesendet");
   }
 
+  // Empfänger ermitteln
   const recipientEmail =
-    draft.company.email || draft.company.contacts[0]?.email;
+    draft.recipientEmail || draft.company.email || draft.company.contacts[0]?.email;
 
   if (!recipientEmail) {
     throw new Error("Keine Empfänger-E-Mail-Adresse vorhanden");
   }
 
-  // E-Mail-Versand (wenn SMTP konfiguriert)
-  if (process.env.SMTP_HOST) {
-    const nodemailer = await import("nodemailer");
-    const transporter = nodemailer.default.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || "587"),
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD,
-      },
-    });
+  // ═══ Versand vorbereiten ═══
+  
+  const { sendEmail, isSmtpConfigured, createEmailBody } = await import("./email.service");
 
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM,
-      to: recipientEmail,
-      subject: draft.subject || "",
-      text: draft.body || "",
-    });
-  } else {
-    console.log(`[outreach] SMTP nicht konfiguriert — simulierter Versand an ${recipientEmail}`);
-  }
-
-  // Status aktualisieren
+  // Status auf "SENDING" setzen (für Retry-Logik)
   await db.outreachDraft.update({
     where: { id: outreachId },
     data: {
-      status: "SENT",
+      sentStatus: "SENDING",
       sentAt: new Date(),
       sentBy: userId,
     },
   });
+
+  let result: { success: boolean; messageId?: string; error?: string; previewUrl?: string };
+
+  // ═══ Echter Versand oder Simulation ═══
+  
+  if (isSmtpConfigured()) {
+    // Echter SMTP-Versand
+    const leadUrl = `${process.env.NEXTAUTH_URL}/leads/${draft.companyId}`;
+    const emailBody = createEmailBody(draft.body || "", leadUrl);
+
+    const emailResult = await sendEmail({
+      to: recipientEmail,
+      toName: draft.recipientName || undefined,
+      subject: draft.subject || "",
+      body: emailBody,
+    });
+
+    result = {
+      success: emailResult.success,
+      messageId: emailResult.messageId,
+      error: emailResult.error,
+      previewUrl: emailResult.previewUrl,
+    };
+  } else {
+    // Simulation (Development ohne SMTP)
+    console.log(`[outreach] SIMULIERTER Versand an ${recipientEmail}`);
+    console.log(`  Subject: ${draft.subject}`);
+    console.log(`  Body preview: ${(draft.body || "").substring(0, 100)}...`);
+    
+    result = {
+      success: true,
+      messageId: `simulated-${Date.now()}`,
+      error: undefined,
+    };
+  }
+
+  // ═══ Status aktualisieren ═══
+  
+  if (result.success) {
+    await db.outreachDraft.update({
+      where: { id: outreachId },
+      data: {
+        status: "SENT",
+        sentStatus: "SENT",
+        messageId: result.messageId,
+        sentProvider: isSmtpConfigured() ? "smtp" : "simulated",
+        sentError: null,
+      },
+    });
+  } else {
+    // Versand fehlgeschlagen — Status FAILED, aber retrybar
+    await db.outreachDraft.update({
+      where: { id: outreachId },
+      data: {
+        sentStatus: "FAILED",
+        sentError: result.error || "Unbekannter Fehler",
+      },
+    });
+    
+    throw new Error(`Versand fehlgeschlagen: ${result.error}`);
+  }
 
   await db.company.update({
     where: { id: draft.companyId },

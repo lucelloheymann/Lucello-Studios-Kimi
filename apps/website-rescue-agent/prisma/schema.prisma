@@ -372,6 +372,10 @@ model OutreachDraft {
   // Versand
   sentAt          DateTime?
   sentBy          String?  // User-ID
+  sentStatus      String?  // PENDING | SENDING | SENT | FAILED
+  sentError       String?  // Fehlermeldung wenn Versand fehlgeschlagen
+  messageId       String?  // SMTP Message-ID / Provider Message-ID
+  sentProvider    String?  // z.B. "smtp", "sendgrid", "mailgun"
   openedAt        DateTime?
   repliedAt       DateTime?
 

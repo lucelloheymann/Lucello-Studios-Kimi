@@ -94,9 +94,22 @@ const processors: Record<string, (job: Job<JobPayload>) => Promise<void>> = {
     console.log(`[send-outreach] Starting: ${companyId} (${outreachDraftId})`);
     
     await updateJobRecord(job, "RUNNING");
-    // TODO: Implement actual email sending
-    console.log(`[send-outreach] Email sending not yet implemented`);
-    await updateJobRecord(job, "COMPLETED");
+    
+    try {
+      // Worker-Context hat keinen User — wir verwenden "worker" als sentBy
+      const { sendOutreach } = await import("@/server/services/outreach.service");
+      const result = await sendOutreach(outreachDraftId, "worker");
+      
+      if (result.success) {
+        console.log(`[send-outreach] Email sent: ${result.messageId}`);
+        await updateJobRecord(job, "COMPLETED");
+      } else {
+        throw new Error(result.error || "Send failed");
+      }
+    } catch (error) {
+      console.error(`[send-outreach] Failed:`, error);
+      throw error; // BullMQ wird Retry handlen
+    }
 
     console.log(`[send-outreach] Completed: ${companyId}`);
   },

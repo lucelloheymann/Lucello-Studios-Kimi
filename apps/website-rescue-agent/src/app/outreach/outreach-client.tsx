@@ -35,6 +35,9 @@ interface OutreachItem {
   lastEditedAt: string | null;
   approvedAt: string | null;
   sentAt: string | null;
+  sentStatus: string | null;
+  sentError: string | null;
+  messageId: string | null;
   createdAt: string;
 }
 
@@ -215,9 +218,27 @@ function OutreachView({ items, stats, activeFilter, setActiveFilter, searchQuery
     if (res.ok) window.location.reload();
   };
 
+  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+
   const handleSend = async (id: string) => {
-    const res = await fetch(`/api/outreach/${id}/send`, { method: "POST" });
-    if (res.ok) window.location.reload();
+    setSendingId(id);
+    setSendError(null);
+    
+    try {
+      const res = await fetch(`/api/outreach/${id}/send`, { method: "POST" });
+      const data = await res.json();
+      
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        setSendError(data.error || "Versand fehlgeschlagen");
+        setSendingId(null);
+      }
+    } catch (err) {
+      setSendError("Netzwerkfehler beim Versand");
+      setSendingId(null);
+    }
   };
 
   return (
@@ -232,6 +253,18 @@ function OutreachView({ items, stats, activeFilter, setActiveFilter, searchQuery
       </div>
 
       <SearchBar query={searchQuery} setQuery={setSearchQuery} placeholder="Firma oder Betreff suchen..." count={items.length} total={stats.total} />
+
+      {/* Send Error Display */}
+      {sendError && (
+        <div className="rounded-lg bg-red-500/10 border border-red-500/30 p-4 flex items-start gap-3">
+          <IconWrapper icon={AlertTriangle} className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-red-400">Versand fehlgeschlagen</p>
+            <p className="text-sm text-red-300/80 mt-1">{sendError}</p>
+            <p className="text-xs text-red-300/60 mt-2">Du kannst es erneut versuchen.</p>
+          </div>
+        </div>
+      )}
 
       {items.length === 0 ? (
         <EmptyState icon={Inbox} title="Keine Einträge" subtitle="Ändere den Filter oder die Suche" />
@@ -274,8 +307,43 @@ function OutreachView({ items, stats, activeFilter, setActiveFilter, searchQuery
                   <div className="flex items-center justify-end gap-2">
                     {canEdit && <Link href={`/outreach/${item.id}/edit`} className="flex items-center gap-1 text-xs text-zinc-400 hover:text-white border border-zinc-700 px-2.5 py-1.5 rounded-lg hover:bg-zinc-800"><IconWrapper icon={Edit3} className="h-3 w-3" />Bearbeiten</Link>}
                     {canApprove && <button onClick={() => handleApprove(item.id)} className="flex items-center gap-1 text-xs bg-emerald-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-emerald-500"><IconWrapper icon={ShieldCheck} className="h-3 w-3" />Freigeben</button>}
-                    {canSend && <button onClick={() => handleSend(item.id)} className="flex items-center gap-1 text-xs bg-sky-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-sky-500"><IconWrapper icon={Send} className="h-3 w-3" />Senden</button>}
-                    {item.status === "SENT" && <span className="flex items-center gap-1 text-xs text-sky-400"><IconWrapper icon={CheckCircle} className="h-3 w-3" />Versendet</span>}
+                    {canSend && (
+                      <button 
+                        onClick={() => handleSend(item.id)} 
+                        disabled={sendingId === item.id}
+                        className="flex items-center gap-1 text-xs bg-sky-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {sendingId === item.id ? (
+                          <><span className="animate-spin">⏳</span>Sende...</>
+                        ) : (
+                          <><IconWrapper icon={Send} className="h-3 w-3" />Senden</>
+                        )}
+                      </button>
+                    )}
+                    {item.status === "SENT" && (
+                      <div className="flex flex-col items-end">
+                        <span className="flex items-center gap-1 text-xs text-sky-400">
+                          <IconWrapper icon={CheckCircle} className="h-3 w-3" />
+                          {item.sentStatus === "SENT" ? "Versendet" : "Gesendet"}
+                        </span>
+                        {item.messageId && (
+                          <span className="text-[9px] text-zinc-600 mt-0.5" title={item.messageId}>
+                            ID: {item.messageId.substring(0, 8)}...
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {item.sentStatus === "FAILED" && (
+                      <div className="flex flex-col items-end">
+                        <span className="flex items-center gap-1 text-xs text-red-400">
+                          <IconWrapper icon={AlertTriangle} className="h-3 w-3" />
+                          Fehlgeschlagen
+                        </span>
+                        <span className="text-[9px] text-red-400/70 mt-0.5 max-w-[120px] truncate" title={item.sentError || ""}>
+                          {item.sentError}
+                        </span>
+                      </div>
+                    )}
                     {item.isBlockedForSend && <Link href={`/outreach/${item.id}/edit`} className="flex items-center gap-1 text-xs text-red-400 border border-red-500/30 px-2.5 py-1.5 rounded-lg hover:bg-red-500/10"><IconWrapper icon={AlertTriangle} className="h-3 w-3" />Prüfen</Link>}
                   </div>
                 </div>
