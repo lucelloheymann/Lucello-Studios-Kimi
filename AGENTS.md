@@ -1,228 +1,155 @@
-# AGENTS.md — Gemeinsames Team-Memory für Kimi
+# AGENTS.md — Team-Memory für Kimi Code CLI
 
-> Dieses Dokument wird von allen Teammitgliedern geteilt.
-> Änderungen erfordern einen PR und Team-Review.
-> Letzte Überarbeitung: 2026-03-28
-> Konvertiert von Claude Code zu Kimi Code CLI.
+> Dieses Dokument gilt für das gesamte Team (Luis + Marcel).  
+> Letzte Überarbeitung: 2026-03-29  
+> Status: Ehrliche Dokumentation — keine Marketing-Sprache
 
 ---
 
 ## Projekt-Überblick
 
-**Projektname**: Lucello Studio — Website Rescue Agent
-**Zweck**: Internes KI-gestütztes Tool für Website-Analyse, Demo-Generierung und seriöse Akquise. Findet Unternehmen mit schwachem Webauftritt, analysiert sie, erstellt bessere Demo-Websites und bereitet Outreach vor — alles nur nach manueller Freigabe.
-**Team**: Luis + Marcel (je 1 PC + 1 Laptop, 4 Geräte gesamt)
-**Hauptsprachen / Frameworks**: TypeScript, Next.js 15, React 19, Tailwind CSS, shadcn/ui
+| | |
+|---|---|
+| **Projekt** | Website Rescue Agent |
+| **Zweck** | Internes Tool für Website-Analyse, Demo-Generierung und Akquise |
+| **Stack** | Next.js 15, React 19, TypeScript, Tailwind, shadcn/ui, Prisma, SQLite |
+| **Ort** | `apps/website-rescue-agent/` |
 
 ---
 
-## Architektur-Überblick
+## Was ist WIRKLICH integriert
 
-Das Hauptprodukt ist eine interne Web-App unter `apps/website-rescue-agent/`.
-Details in `apps/website-rescue-agent/README.md` und `docs/architecture/README.md`.
+### ✅ Voll integriert & funktionierend
 
-Wichtige Komponenten:
-- **Frontend**: Next.js 15 App Router, React 19, Tailwind CSS, shadcn/ui
-- **Backend**: Next.js API Routes + Server Actions, Node.js Worker-Prozess
-- **Datenbank**: PostgreSQL + Prisma ORM
-- **Queue**: BullMQ + Redis (für Crawl-, Analyse-, Generierungs-Jobs)
-- **Crawling**: Playwright (Chromium, headless)
-- **LLM**: Vercel AI SDK — modular austauschbar (OpenAI GPT-4o default, Anthropic optional)
-- **Auth**: NextAuth v5 (Credentials für internes Tool)
+| Feature | Status | Nachweis |
+|---------|--------|----------|
+| **Playwright E2E** | 27 Tests passing | `e2e/*.spec.ts`, `npm run test:e2e` |
+| **Next.js App** | Läuft lokal | `npm run dev` auf Port 3000 |
+| **Prisma/SQLite** | Funktioniert | `prisma/schema.prisma`, `npm run db:push` |
+| **Conversation Feature** | MVP fertig | Siehe `docs/reviews/CONVERSATION_FEATURE_REVIEW.md` |
 
----
+### ⚠️ Code vorhanden, braucht Aktivierung
 
-## Superpowers Skills
+| Feature | Status | Was fehlt |
+|---------|--------|-----------|
+| **Sentry** | Config existiert | `SENTRY_DSN` in `.env.local` |
+| **BullMQ Worker** | Worker-Code fertig | Redis-Server + `REDIS_URL` |
+| **LLM-Analyse** | Code vorhanden | `OPENAI_API_KEY` oder `ANTHROPIC_API_KEY` |
 
-Dieses Projekt verwendet professionelle Entwicklungs-Skills (basierend auf [obra/superpowers](https://github.com/obra/superpowers)).
+### ❌ Nicht integriert (nur Daten/Referenz)
 
-### Workflow
-
-1. **Brainstorming** - Vor jedem Feature: Design klären (`/accept design`)
-2. **Writing Plans** - Implementierungsplan erstellen (`/plan 1/2/3`)
-3. **TDD** - RED-GREEN-REFACTOR Zyklus während Implementierung
-4. **Code Review** - Automatisches Review vor jedem Commit
-5. **Git Worktrees** - Isolierte Feature-Branches
-6. **Finishing** - Merge & Cleanup nach Fertigstellung
-
-### Dokumentation
-
-Alle Skills sind dokumentiert in:
-- `apps/website-rescue-agent/skills/SKILL.md` - Übersicht
-- `apps/website-rescue-agent/skills/*/SKILL.md` - Einzelne Skills
-
-### Verpflichtend für
-
-- Features > 30 Minuten Aufwand
-- Neue Architektur-Komponenten
-- Bugfixes mit unklarer Ursache
-- Alle Datenbank-Schema-Änderungen
+| Feature | Was wirklich existiert | Was behauptet wurde |
+|---------|------------------------|---------------------|
+| **UI UX Pro Max** | CSV-Dateien + Python-Scripts in `src/ui-ux-pro-max/` | "Integriert" — ist aber nur kopiert |
+| **Superpowers Skills** | Markdown-Dateien in `skills/` für Claude-CLI | "Automatische Aktivierung" — funktioniert nicht mit Kimi |
 
 ---
 
-## Entwicklungs-Konventionen
+## Kimi-Workflow (manuell, verbindlich)
 
-### Coding Style
-- TypeScript strict mode, Zod für Validierung
-- Conventional Commits: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`
-- Keine Business-Logik in UI-Komponenten
-- Services in `src/server/services/`, Prompts in `src/server/prompts/`
-- **TDD erforderlich**: Tests vor Code (RED-GREEN-REFACTOR)
+Kimi hat **keine automatische Skill-Aktivierung**. Stattdessen folgender manueller Workflow:
 
-### Branch-Strategie
-- `main` — stabile Version, direkte Pushes verboten
-- `develop` — Integrations-Branch
-- `feature/<name>` — Feature-Branches
-- `fix/<name>` — Bugfix-Branches
+### Phase 1: Brainstorming
+**Wann:** Bei neuem Feature-Request  
+**Was:** Design & Scope klären  
+**Ort:** `docs/workflows/brainstorming.md`  
+**Trigger:** Nutzer sagt "Ich möchte..." → Kimi liest Workflow → führt durch
 
-### Code-Review
-- Mindestens 1 Approval vor dem Merge
-- CI muss grün sein
-- Squash-Merge auf `develop`, Merge-Commit auf `main`
+### Phase 2: Planning
+**Wann:** Nach Design-Freigabe  
+**Was:** Implementierungsplan mit Tasks  
+**Ort:** `docs/workflows/planning.md`  
+**Output:** `docs/plans/[feature]-plan.md`
 
----
+### Phase 3: Implementation
+**Wann:** Nach Plan-Freigabe  
+**Was:** Umsetzung in Batches  
+**Ort:** `docs/workflows/implementation.md`  
+**Regel:** Tests first (RED-GREEN-REFACTOR)
 
-## Teamweite Regeln für Kimi
+### Phase 4: Review
+**Wann:** Nach Code-Fertigstellung  
+**Was:** Qualitätsprüfung vor Commit  
+**Ort:** `docs/workflows/review.md`  
+**Pflicht:** `npm run typecheck && npm run lint`
 
-### Verhalten
-- Antworten auf **Deutsch**, außer Code-Kommentare (Englisch)
-- Kurze, direkte Antworten bevorzugt
-- Vor Änderungen an bestehenden Dateien: erst lesen, dann ändern
-- Keine unnötigen Abstractions oder Over-Engineering
-
-### Was Kimi tun darf (ohne Rückfrage)
-- Dateien lesen und durchsuchen (Read, Glob, Grep)
-- Lokale Tests ausführen
-- Code schreiben und bearbeiten (WriteFile, StrReplaceFile)
-- `npm run typecheck`, `npm run lint` ausführen
-- Web-Suche durchführen (SearchWeb, FetchURL)
-- Subagents für parallele Aufgaben spawnen (Task)
-
-### Was Kimi vorher fragen muss
-- Destructive Git-Operationen (force push, reset --hard)
-- Branches löschen
-- Externe APIs aufrufen
-- Prisma-Migrationen auf Prod ausführen
-- Secrets oder Credentials verwenden
-
-### Was Kimi nie tun darf
-- `.env`-Dateien committen
-- Direkt auf `main` pushen
-- Outreach-Versand ohne explizite User-Freigabe auslösen
-- Daten in den Outreach-Entwürfen erfinden (Guardrail!)
+### Phase 5: Finish
+**Wann:** Nach Review-Approval  
+**Was:** Commit, Merge, Cleanup  
+**Ort:** `docs/workflows/finish.md`
 
 ---
 
-## Bekannte Fallstricke / Wichtige Hinweise
+## Was Kimi tun darf (ohne Rückfrage)
 
-- **Worker muss separat laufen**: `npm run worker:dev` in eigenem Terminal
-- **Playwright-Browser**: `npx playwright install chromium` nach `npm install`
-- **LLM-Analyse ist optional**: Auch ohne API-Key läuft die heuristische Analyse
-- **Keine echten Daten erfinden**: LLM-Prompts enthalten Guardrails gegen Halluzinationen
-- **Outreach-Guardrails sind hart**: `isBlockedForSend: true` kann nicht durch API umgangen werden
+- Dateien lesen/schreiben/bearbeiten
+- Tests ausführen (`npm run test:e2e`, `npm run typecheck`)
+- Web-Suche
+- Subagents für parallele Aufgaben spawnen
+- Lokalen Python/Node-Code ausführen
+
+## Was Kimi VORHER fragen muss
+
+- `git push` auf main
+- `git reset --hard`, force push
+- Prisma-Migrationen auf Produktion
+- Externe API-Calls mit echten Credentials
+- Dateien außerhalb des Projekt-Ordners
 
 ---
 
 ## Wichtige Dateipfade
 
-| Pfad | Beschreibung |
-|---|---|
-| `apps/website-rescue-agent/` | Haupt-Anwendung (Next.js) |
-| `apps/website-rescue-agent/prisma/schema.prisma` | Vollständiges Datenmodell |
-| `apps/website-rescue-agent/src/server/` | Business-Logik, Services, Prompts |
-| `apps/website-rescue-agent/src/lib/` | Shared Utilities, DB, Queue, LLM, Auth |
-| `apps/website-rescue-agent/skills/` | Superpowers Development Skills |
-| `apps/website-rescue-agent/e2e/` | Playwright E2E Tests |
-| `docs/architecture/README.md` | Architektur-Details |
-| `docs/decisions/` | Architektur-Entscheidungen (ADRs) |
-| `docs/runbooks/development-workflow.md` | Dev-Workflow |
-| `docs/prompts/team-prompts.md` | Wiederverwendbare Prompts |
-| `docs/tools/` | Entwicklungs-Tools (Playwright, Sentry, BullMQ) |
-| `apps/website-rescue-agent/src/ui-ux-pro-max/` | UI UX Pro Max Design-Daten |
-| `scripts/` | UI UX Pro Max Python Scripts |
+```
+apps/website-rescue-agent/
+├── prisma/schema.prisma      # Datenbank-Schema
+├── src/app/                  # Next.js App Router
+├── src/server/               # API Routes, Services
+├── src/lib/                  # DB, Queue, Auth, LLM
+├── e2e/                      # Playwright Tests
+└── src/ui-ux-pro-max/        # Design-Daten (CSV, Python)
 
----
+docs/
+├── workflows/                # Kimi-Workflows (neu)
+├── reviews/                  # Feature-Reviews
+├── architecture/             # ADRs
+└── tools/                    # Tool-Doku (Sentry, etc.)
 
-## Externe Ressourcen
-
-| Ressource | URL / Ort |
-|---|---|
-| Issue-Tracker | GitHub Issues |
-| CI/CD | GitHub Actions (geplant) |
-| Staging | lokal (kein Staging-Server bisher) |
-| Produktion | noch nicht deployed |
-
----
-
-## UI UX Pro Max Integration
-
-Ab sofort ist **UI UX Pro Max** in das Projekt integriert. Das bietet:
-- **67 UI Styles** (Glassmorphism, Minimalism, Brutalism, etc.)
-- **161 Color Palettes** für verschiedene Branchen
-- **57 Font Pairings** mit Google Fonts
-- **161 Reasoning Rules** für automatische Design-System-Generierung
-
-### Verwendung
-
-**Python Scripts ausführen:**
-```bash
-# Design-System für ein Projekt generieren
-python3 scripts/search.py "beauty spa wellness" --design-system -p "Serenity Spa"
-
-# Farbpaletten suchen
-python3 scripts/search.py "luxury brand" --domain color
-
-# UI Styles suchen
-python3 scripts/search.py "glassmorphism" --domain style
-
-# Fonts suchen
-python3 scripts/search.py "elegant serif" --domain typography
+scripts/                      # UI UX Pro Max Python
 ```
 
-**In Node.js/TypeScript nutzen:**
-Die CSV-Dateien unter `src/ui-ux-pro-max/data/` können direkt importiert werden:
-- `products.csv` - 161 Produktkategorien
-- `styles.csv` - 67 UI Styles
-- `colors.csv` - 161 Farbpaletten
-- `typography.csv` - 57 Font-Paarungen
+---
 
-### Integration in Website Rescue Agent
+## Tool-Status (ehrlich)
 
-Für die Demo-Website-Generierung können wir jetzt:
-1. Automatisch passende Styles basierend auf der Branche vorschlagen
-2. Farbpaletten für das Redesign auswählen
-3. Typography-Paarungen empfehlen
-4. Komplette Design-Systeme generieren
+| Tool | Status | Nutzung |
+|------|--------|---------|
+| **Playwright** | ✅ Funktioniert | `npm run test:e2e` |
+| **Sentry** | ⚠️ Config ready | Braucht `SENTRY_DSN` in ENV |
+| **Worker** | ⚠️ Code ready | Braucht Redis + `npm run worker:dev` |
+| **UI UX Pro Max** | ⚠️ Daten vorhanden | Python-Scripts manuell oder npm wrapper |
+| **Superpowers** | ❌ Nicht nutzbar | Claude-Only Slash-Commands |
 
 ---
 
-## Kimi Code CLI Referenz
+## Bekannte Fallstricke
 
-### Verfügbare Tools
-- **Shell**: PowerShell-Befehle ausführen
-- **ReadFile**: Dateien lesen
-- **WriteFile**: Dateien schreiben
-- **StrReplaceFile**: Dateien bearbeiten
-- **Glob**: Dateien suchen
-- **Grep**: Inhaltssuche
-- **SearchWeb**: Websuche
-- **FetchURL**: URL-Inhalt abrufen
-- **Task**: Subagents spawnen
-- **AskUserQuestion**: Benutzer fragen
-
-### Background Tasks
-- `Shell(run_in_background=true)` für langlaufende Prozesse
-- `TaskList` zum Anzeigen aktiver Tasks
-- `TaskOutput` zum Prüfen von Task-Status
-- `TaskStop` zum Abbrechen
+- **Playwright:** `npx playwright install chromium` nach `npm install` nicht vergessen
+- **Worker:** Muss in separatem Terminal laufen (`npm run worker:dev`)
+- **SQLite:** File-basiert, kein Docker nötigt
+- **Git:** Direkte Pushes auf main sind blockiert (Branch protection)
 
 ---
 
 ## Änderungshistorie
 
-| Datum | Autor | Änderung |
-|---|---|---|
-| 2026-03-27 | Team | Initiale Version erstellt (für Claude Code) |
-| 2026-03-27 | Marcel + Claude | Projektdetails Website Rescue Agent eingepflegt |
-| 2026-03-28 | Marcel + Kimi | Konvertierung zu Kimi Code CLI |
-| 2026-03-28 | Marcel + Kimi | UI UX Pro Max Integration |
+| Datum | Was geändert |
+|-------|--------------|
+| 2026-03-29 | Ehrliche Dokumentation: Tool-Status korrigiert, Kimi-Workflow definiert |
+| 2026-03-28 | Konvertierung zu Kimi Code CLI (vorherige Version) |
+| 2026-03-27 | Initiale Version |
+
+---
+
+*Dieses Dokument enthält keine Marketing-Sprache mehr.  
+Status-Angaben sind hart nachprüfbar.*

@@ -25,7 +25,14 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
-    "generate": "prisma generate"
+    "generate": "prisma generate",
+    "uiux:search": "node scripts/uiux-search.js",
+    "uiux:style": "node scripts/uiux-search.js --domain style",
+    "uiux:colors": "node scripts/uiux-search.js --domain color",
+    "uiux:fonts": "node scripts/uiux-search.js --domain typography",
+    "uiux:landing": "node scripts/uiux-search.js --domain landing",
+    "uiux:product": "node scripts/uiux-search.js --domain product",
+    "uiux:design": "node scripts/uiux-search.js --design-system"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.0.0",
