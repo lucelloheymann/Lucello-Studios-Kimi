@@ -1,121 +1,232 @@
-// BullMQ Worker — separater Prozess (npm run worker)
-// Verarbeitet alle Queue-Jobs für Website Rescue Agent
+/**
+ * BullMQ Worker Process
+ * 
+ * Run with: npm run worker
+ * Run with watch mode: npm run worker:dev
+ * 
+ * This worker processes all queue jobs for Website Rescue Agent.
+ * Supports graceful shutdown and Sentry error reporting.
+ * 
+ * @see https://docs.bullmq.io/guide/workers
+ */
 
 import { Worker, type Job } from "bullmq";
-import { getRedisConnection } from "@/lib/queue";
+import { 
+  createRedisConnection, 
+  defaultWorkerOptions,
+  queueConfigurations,
+} from "@/lib/queue-config";
 import { db } from "@/lib/db";
 import { crawlWebsite } from "@/server/services/crawl.service";
 import { analyzeWebsite } from "@/server/services/analysis.service";
 import { generateDemoSite } from "@/server/services/site-generator.service";
 import { generateOutreachDraft } from "@/server/services/outreach.service";
 import type { QueueName, JobPayload } from "@/types";
+import * as Sentry from "@sentry/node";
 
-const connection = getRedisConnection();
+// Initialize Sentry for worker
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || "development",
+    tracesSampleRate: 0.1,
+  });
+}
 
-// ─── Crawl Worker ─────────────────────────────────────────────────────────────
+const connection = createRedisConnection();
 
-const crawlWorker = new Worker<JobPayload>(
-  "crawl",
-  async (job: Job<JobPayload>) => {
+// ─── Job Processors ───────────────────────────────────────────────────────────
+
+const processors: Record<string, (job: Job<JobPayload>) => Promise<void>> = {
+  crawl: async (job) => {
     const { companyId } = job.data;
-    console.log(`[crawl] Start: ${companyId}`);
-
+    console.log(`[crawl] Starting: ${companyId}`);
+    
     await updateJobRecord(job, "RUNNING");
     await crawlWebsite(companyId);
     await updateJobRecord(job, "COMPLETED");
 
-    // Pipeline: direkt Analyse starten
+    // Pipeline: Queue analysis job
     const { getQueue } = await import("@/lib/queue");
     await getQueue("analyze").add("analyze", { companyId }, {
       attempts: 3,
       backoff: { type: "exponential", delay: 3000 },
     });
 
-    console.log(`[crawl] Fertig: ${companyId} → Analyse eingereiht`);
+    console.log(`[crawl] Completed: ${companyId} → Analysis queued`);
   },
-  {
-    connection,
-    concurrency: parseInt(process.env.CRAWL_CONCURRENCY || "3"),
-  }
-);
 
-// ─── Analyse Worker ───────────────────────────────────────────────────────────
-
-const analyzeWorker = new Worker<JobPayload>(
-  "analyze",
-  async (job: Job<JobPayload>) => {
+  analyze: async (job) => {
     const { companyId } = job.data;
-    console.log(`[analyze] Start: ${companyId}`);
-
+    console.log(`[analyze] Starting: ${companyId}`);
+    
     await updateJobRecord(job, "RUNNING");
     await analyzeWebsite(companyId);
     await updateJobRecord(job, "COMPLETED");
 
-    console.log(`[analyze] Fertig: ${companyId}`);
+    console.log(`[analyze] Completed: ${companyId}`);
   },
-  {
-    connection,
-    concurrency: parseInt(process.env.LLM_CONCURRENCY || "2"),
-  }
-);
 
-// ─── Site-Generator Worker ────────────────────────────────────────────────────
-
-const siteGenWorker = new Worker<JobPayload>(
-  "generate-site",
-  async (job: Job<JobPayload>) => {
+  "generate-site": async (job) => {
     const { companyId, style } = job.data;
-    console.log(`[generate-site] Start: ${companyId} (${style})`);
-
+    console.log(`[generate-site] Starting: ${companyId} (${style})`);
+    
     await updateJobRecord(job, "RUNNING");
     await generateDemoSite(companyId, style as string | undefined);
     await updateJobRecord(job, "COMPLETED");
 
-    console.log(`[generate-site] Fertig: ${companyId}`);
+    console.log(`[generate-site] Completed: ${companyId}`);
   },
-  {
-    connection,
-    concurrency: parseInt(process.env.LLM_CONCURRENCY || "2"),
-  }
-);
 
-// ─── Outreach Worker ──────────────────────────────────────────────────────────
-
-const outreachWorker = new Worker<JobPayload>(
-  "generate-outreach",
-  async (job: Job<JobPayload>) => {
+  "generate-outreach": async (job) => {
     const { companyId, type } = job.data;
-    console.log(`[generate-outreach] Start: ${companyId} (${type})`);
-
+    console.log(`[generate-outreach] Starting: ${companyId} (${type})`);
+    
     await updateJobRecord(job, "RUNNING");
     await generateOutreachDraft(companyId, type as string | undefined);
     await updateJobRecord(job, "COMPLETED");
 
-    console.log(`[generate-outreach] Fertig: ${companyId}`);
+    console.log(`[generate-outreach] Completed: ${companyId}`);
   },
-  {
-    connection,
-    concurrency: parseInt(process.env.LLM_CONCURRENCY || "2"),
+
+  "send-outreach": async (job) => {
+    const { companyId, outreachDraftId } = job.data;
+    console.log(`[send-outreach] Starting: ${companyId} (${outreachDraftId})`);
+    
+    await updateJobRecord(job, "RUNNING");
+    // TODO: Implement actual email sending
+    console.log(`[send-outreach] Email sending not yet implemented`);
+    await updateJobRecord(job, "COMPLETED");
+
+    console.log(`[send-outreach] Completed: ${companyId}`);
+  },
+
+  qualify: async (job) => {
+    const { companyId } = job.data;
+    console.log(`[qualify] Starting: ${companyId}`);
+    
+    await updateJobRecord(job, "RUNNING");
+    // Qualification is handled during analysis
+    await updateJobRecord(job, "COMPLETED");
+
+    console.log(`[qualify] Completed: ${companyId}`);
+  },
+
+  "compare-competitors": async (job) => {
+    const { companyId } = job.data;
+    console.log(`[compare-competitors] Starting: ${companyId}`);
+    
+    await updateJobRecord(job, "RUNNING");
+    // TODO: Implement competitor comparison
+    console.log(`[compare-competitors] Not yet implemented`);
+    await updateJobRecord(job, "COMPLETED");
+
+    console.log(`[compare-competitors] Completed: ${companyId}`);
+  },
+};
+
+// ─── Worker Creation ──────────────────────────────────────────────────────────
+
+function createWorker(name: QueueName): Worker<JobPayload> {
+  const processor = processors[name];
+  
+  if (!processor) {
+    throw new Error(`No processor defined for queue: ${name}`);
   }
-);
 
-// ─── Error-Handling ───────────────────────────────────────────────────────────
+  const config = queueConfigurations[name] || {};
+  const concurrency = getConcurrencyForQueue(name);
 
-const workers = [crawlWorker, analyzeWorker, siteGenWorker, outreachWorker];
+  const worker = new Worker<JobPayload>(
+    name,
+    async (job) => {
+      try {
+        await processor(job);
+      } catch (error) {
+        // Report to Sentry
+        Sentry.captureException(error, {
+          tags: { queue: name, jobId: job.id },
+          extra: { jobData: job.data },
+        });
+        throw error;
+      }
+    },
+    {
+      ...defaultWorkerOptions,
+      connection,
+      concurrency,
+    }
+  );
 
-for (const worker of workers) {
+  // Event handlers
+  worker.on("completed", (job) => {
+    console.log(`[${name}] Job completed:`, job?.id);
+  });
+
   worker.on("failed", async (job, error) => {
     if (!job) return;
-    console.error(`[${worker.name}] Job fehlgeschlagen:`, job.id, error.message);
+    console.error(`[${name}] Job failed:`, job.id, error.message);
     await updateJobRecord(job, "FAILED", error.message);
+    
+    // Report to Sentry
+    Sentry.captureException(error, {
+      tags: { queue: name, jobId: job.id, event: "job_failed" },
+      extra: { 
+        jobData: job.data, 
+        attemptsMade: job.attemptsMade,
+        failedReason: job.failedReason,
+      },
+    });
   });
 
   worker.on("error", (error) => {
-    console.error(`[${worker.name}] Worker-Fehler:`, error);
+    console.error(`[${name}] Worker error:`, error);
+    Sentry.captureException(error, {
+      tags: { queue: name, event: "worker_error" },
+    });
   });
+
+  worker.on("stalled", (jobId) => {
+    console.warn(`[${name}] Job stalled:`, jobId);
+    Sentry.captureMessage(`Job stalled in ${name}`, {
+      level: "warning",
+      tags: { queue: name, jobId },
+    });
+  });
+
+  return worker;
 }
 
-// ─── JobRecord-Utility ────────────────────────────────────────────────────────
+function getConcurrencyForQueue(name: QueueName): number {
+  switch (name) {
+    case "crawl":
+      return parseInt(process.env.CRAWL_CONCURRENCY || "3", 10);
+    case "analyze":
+    case "generate-site":
+    case "generate-outreach":
+      return parseInt(process.env.LLM_CONCURRENCY || "2", 10);
+    case "send-outreach":
+      return parseInt(process.env.EMAIL_CONCURRENCY || "1", 10);
+    default:
+      return 2;
+  }
+}
+
+// ─── Create All Workers ───────────────────────────────────────────────────────
+
+const workerNames: QueueName[] = [
+  "crawl",
+  "analyze",
+  "generate-site",
+  "generate-outreach",
+  "qualify",
+  "compare-competitors",
+  "send-outreach",
+];
+
+const workers = workerNames.map(createWorker);
+
+// ─── JobRecord Utility ────────────────────────────────────────────────────────
 
 async function updateJobRecord(
   job: Job,
@@ -125,7 +236,7 @@ async function updateJobRecord(
   try {
     if (job.id) {
       await db.jobRecord.upsert({
-        where: { id: job.id ?? `${Date.now()}-${Math.random()}` },
+        where: { id: job.id },
         update: {
           status,
           ...(status === "RUNNING" ? { startedAt: new Date() } : {}),
@@ -135,32 +246,69 @@ async function updateJobRecord(
           queueJobId: job.id,
         },
         create: {
+          id: job.id,
           type: job.name,
           status,
           entityType: "Company",
           entityId: (job.data as JobPayload).companyId,
-          startedAt: new Date(),
+          startedAt: status === "RUNNING" ? new Date() : undefined,
+          completedAt: status !== "RUNNING" ? new Date() : undefined,
           payload: JSON.stringify(job.data),
           queueJobId: job.id,
           retryCount: job.attemptsMade,
+          ...(errorMessage ? { errorMessage } : {}),
         },
       });
     }
-  } catch {
-    // Job-Record-Fehler nicht propagieren
+  } catch (error) {
+    console.error("[Worker] Failed to update job record:", error);
+    // Don't propagate - job record failure shouldn't fail the job
   }
 }
 
 // ─── Graceful Shutdown ────────────────────────────────────────────────────────
 
-async function shutdown() {
-  console.log("Worker wird heruntergefahren...");
-  await Promise.all(workers.map((w) => w.close()));
+async function shutdown(signal: string) {
+  console.log(`\n[Worker] Received ${signal}, shutting down...`);
+  
+  // Stop accepting new jobs
+  for (const worker of workers) {
+    worker.pause();
+  }
+  
+  // Wait for current jobs to complete (with timeout)
+  const shutdownTimeout = 30000; // 30 seconds
+  const shutdownPromise = Promise.all(
+    workers.map((w) => w.close())
+  );
+  
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error("Shutdown timeout")), shutdownTimeout);
+  });
+  
+  try {
+    await Promise.race([shutdownPromise, timeoutPromise]);
+    console.log("[Worker] All workers closed gracefully");
+  } catch (error) {
+    console.error("[Worker] Forced shutdown:", error);
+  }
+  
+  // Close Redis connection
+  await connection.quit();
+  
+  // Flush Sentry
+  await Sentry.close(2000);
+  
   process.exit(0);
 }
 
-process.on("SIGTERM", shutdown);
-process.on("SIGINT", shutdown);
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
 
-console.log("Website Rescue Agent Worker gestartet.");
-console.log("Queues:", workers.map((w) => w.name).join(", "));
+// ─── Startup ──────────────────────────────────────────────────────────────────
+
+console.log("╔══════════════════════════════════════════════════════════════╗");
+console.log("║   Website Rescue Agent Worker                                ║");
+console.log("╚══════════════════════════════════════════════════════════════╝");
+console.log("Active queues:", workers.map((w) => w.name).join(", "));
+console.log("Press Ctrl+C to stop gracefully\n");

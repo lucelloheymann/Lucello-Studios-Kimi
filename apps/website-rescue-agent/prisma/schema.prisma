@@ -82,6 +82,7 @@ model Company {
   followUpTasks       FollowUpTask[]
   competitorSnapshots CompetitorSnapshot[]
   artifacts           Artifact[]
+  conversations       Conversation[]
   searchConfig        SearchConfiguration? @relation(fields: [searchConfigId], references: [id])
 
   @@index([status])
@@ -391,6 +392,10 @@ model OutreachDraft {
   updatedAt       DateTime @updatedAt
 
   company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // Relations für Conversation / Follow-up Management
+  initialConversation Conversation? @relation("InitialOutreach")
+  followUp            FollowUp?     @relation
 
   @@index([companyId])
   @@index([status])
@@ -628,4 +633,89 @@ model JobRecord {
   @@index([type, status])
   @@index([entityId])
   @@index([createdAt])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Conversation / Follow-up / Reply Management (MVP)
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Enums (werden als Strings gespeichert):
+// ReplySentiment: POSITIVE | NEUTRAL | NEGATIVE | SPAM
+// ConversationStatus: PENDING | REPLIED | FOLLOW_UP_SENT | CLOSED_WON | CLOSED_LOST | NO_REPLY_CLOSED
+// FollowUpStatus: DRAFT | SENT | CANCELLED
+
+// Conversation: Container für initialen Outreach, Replies und Follow-ups
+// Im MVP: maximal eine aktive Conversation pro Lead
+model Conversation {
+  id                String              @id @default(cuid())
+  companyId         String              
+  company           Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // Initiale Outreach-Verknüpfung (optional, da Conversation auch manuell erstellt werden könnte)
+  initialOutreachId String?             @unique
+  initialOutreach   OutreachDraft?      @relation("InitialOutreach", fields: [initialOutreachId], references: [id])
+  
+  // Status
+  status            String              @default("PENDING")  // ConversationStatus
+  currentSentiment  String?
+  
+  // Zeit-Tracking
+  firstSentAt       DateTime
+  lastContactAt     DateTime
+  replyReceivedAt   DateTime?
+  
+  // Follow-up Logik
+  followUpCount     Int                 @default(0)
+  nextFollowUpDueAt DateTime?
+  
+  // Verknüpfungen
+  replies           Reply[]
+  followUps         FollowUp[]
+  
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  // Index für Queries und Prüfung auf aktive Conversations
+  @@index([companyId, status])
+  @@index([status])
+  @@index([nextFollowUpDueAt])
+}
+
+// Reply: Eingehende Antwort auf eine Conversation
+model Reply {
+  id              String          @id @default(cuid())
+  conversationId  String
+  conversation    Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  sentiment       String  // ReplySentiment
+  content         String?         // Optional: Antworttext
+  notes           String?         // Interne Notizen
+  
+  receivedAt      DateTime        @default(now())
+  createdBy       String          // Wer hat die Antwort erfasst
+  
+  createdAt       DateTime        @default(now())
+  
+  @@index([conversationId])
+  @@index([sentiment])
+}
+
+// FollowUp: Ausgehendes Follow-up zu einer Conversation
+model FollowUp {
+  id              String          @id @default(cuid())
+  conversationId  String
+  conversation    Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  sequenceNumber  Int             // 1, 2, 3
+  status          String          @default("DRAFT")  // FollowUpStatus
+  outreachDraftId String?         @unique
+  outreachDraft   OutreachDraft?  @relation(fields: [outreachDraftId], references: [id])
+  
+  sentAt          DateTime?
+  dueAt           DateTime        // Wann war das Follow-up fällig
+  
+  createdAt       DateTime        @default(now())
+  
+  @@index([conversationId])
+  @@index([status])
 }

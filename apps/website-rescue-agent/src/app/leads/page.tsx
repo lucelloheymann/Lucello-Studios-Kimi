@@ -25,6 +25,7 @@ interface SearchParams {
   q?: string;
   page?: string;
   view?: string; // "action" = Handlungsbedarf (NEW + CRAWLED)
+  filter?: string; // "missing-contacts" = ohne Kontaktdaten
 }
 
 export default async function LeadsPage({
@@ -47,6 +48,12 @@ export default async function LeadsPage({
   }
   if (params.industry) where.industry = params.industry;
   if (params.state) where.state = params.state;
+  if (params.filter === "missing-contacts") {
+    where.AND = [
+      { email: null },
+      { contacts: { none: {} } },
+    ];
+  }
   if (params.q) {
     where.OR = [
       { name: { contains: params.q, mode: "insensitive" } },
@@ -55,11 +62,11 @@ export default async function LeadsPage({
     ];
   }
 
-  const hasFilters = !!(params.q || params.status || params.industry || params.state || params.view);
+  const hasFilters = !!(params.q || params.status || params.industry || params.state || params.view || params.filter);
 
   const baseWhere = { isBlacklisted: false, isDuplicate: false };
 
-  const [total, leads, summaryCounts, actionCount] = await Promise.all([
+  const [total, leads, summaryCounts, actionCount, missingContactsCount] = await Promise.all([
     db.company.count({ where }),
     db.company.findMany({
       where,
@@ -82,6 +89,13 @@ export default async function LeadsPage({
     db.company.count({
       where: { ...baseWhere, status: { in: [LeadStatus.NEW, LeadStatus.CRAWLED] } },
     }),
+    db.company.count({
+      where: { 
+        ...baseWhere, 
+        email: null,
+        contacts: { none: {} },
+      },
+    }),
   ]);
 
   const statusMap = Object.fromEntries(summaryCounts.map((s) => [s.status, s._count.status]));
@@ -93,7 +107,7 @@ export default async function LeadsPage({
   const totalPages = Math.ceil(total / pageSize);
 
   const chips = [
-    { label: "Alle", value: totalAll, href: "/leads", active: !params.status && !params.view },
+    { label: "Alle", value: totalAll, href: "/leads", active: !params.status && !params.view && !params.filter && !params.industry && !params.state },
     {
       label: "Handlungsbedarf",
       value: actionCount,
@@ -127,6 +141,14 @@ export default async function LeadsPage({
       accent: "text-sky-400 border-sky-500/30 bg-sky-500/10",
       accentActive: "text-sky-300 border-sky-400/50 bg-sky-500/20",
     },
+    ...(missingContactsCount > 0 || params.filter === "missing-contacts" ? [{
+      label: "Ohne Kontakt",
+      value: missingContactsCount,
+      href: "/leads?filter=missing-contacts",
+      active: params.filter === "missing-contacts",
+      accent: "text-red-400 border-red-500/30 bg-red-500/10",
+      accentActive: "text-red-300 border-red-400/50 bg-red-500/20",
+    }] : []),
   ];
 
   return (

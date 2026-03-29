@@ -18,16 +18,16 @@ export function Header({ user }: HeaderProps) {
     .slice(0, 2) ?? "?";
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-zinc-800/60 bg-zinc-950 px-6">
-      <div />
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-800 border border-zinc-700 text-xs font-semibold text-zinc-300">
+    <header className="flex h-14 items-center justify-between border-b border-zinc-800/60 bg-zinc-950 px-6" suppressHydrationWarning>
+      <div suppressHydrationWarning />
+      <div className="flex items-center gap-3" suppressHydrationWarning>
+        <div className="flex items-center gap-2.5" suppressHydrationWarning>
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-800 border border-zinc-700 text-xs font-semibold text-zinc-300" suppressHydrationWarning>
             {initials}
           </div>
           <span className="text-sm font-medium text-zinc-400">{user?.name}</span>
         </div>
-        <div className="h-4 w-px bg-zinc-800" />
+        <div className="h-4 w-px bg-zinc-800" suppressHydrationWarning />
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
           className="flex items-center gap-1.5 text-xs text-zinc-600 hover:text-zinc-300 transition-colors"

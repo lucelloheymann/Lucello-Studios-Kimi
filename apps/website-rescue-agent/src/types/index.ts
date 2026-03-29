@@ -21,6 +21,51 @@ export type {
   JobRecord,
 } from "@prisma/client";
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// Conversation / Follow-up / Reply Management Types (MVP)
+// Manuelle Definition da Prisma-Generate durch Windows-Dateisperre blockiert ist
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface Conversation {
+  id: string;
+  companyId: string;
+  initialOutreachId: string | null;
+  status: ConversationStatus;
+  currentSentiment: ReplySentiment | null;
+  firstSentAt: Date;
+  lastContactAt: Date;
+  replyReceivedAt: Date | null;
+  followUpCount: number;
+  nextFollowUpDueAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  // Relations (optional, je nach Query)
+  replies?: Reply[];
+  followUps?: FollowUp[];
+}
+
+export interface Reply {
+  id: string;
+  conversationId: string;
+  sentiment: ReplySentiment;
+  content: string | null;
+  notes: string | null;
+  receivedAt: Date;
+  createdBy: string;
+  createdAt: Date;
+}
+
+export interface FollowUp {
+  id: string;
+  conversationId: string;
+  sequenceNumber: number;
+  status: FollowUpStatus;
+  outreachDraftId: string | null;
+  sentAt: Date | null;
+  dueAt: Date;
+  createdAt: Date;
+}
+
 // Enums als Konstanten-Objekte (für Verwendung als Werte)
 // SQLite hat keine nativen Enums, daher werden diese als Strings gespeichert
 
@@ -427,4 +472,64 @@ export interface TimelineFilter {
   dateTo?: Date;
   userId?: string;
   includeSystem?: boolean;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Conversation / Follow-up / Reply Management Types (MVP)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const ReplySentiment = {
+  POSITIVE: "POSITIVE",
+  NEUTRAL: "NEUTRAL",
+  NEGATIVE: "NEGATIVE",
+  SPAM: "SPAM",
+} as const;
+export type ReplySentiment = typeof ReplySentiment[keyof typeof ReplySentiment];
+
+export const ConversationStatus = {
+  PENDING: "PENDING",
+  REPLIED: "REPLIED",
+  FOLLOW_UP_SENT: "FOLLOW_UP_SENT",
+  CLOSED_WON: "CLOSED_WON",
+  CLOSED_LOST: "CLOSED_LOST",
+  NO_REPLY_CLOSED: "NO_REPLY_CLOSED",
+} as const;
+export type ConversationStatus = typeof ConversationStatus[keyof typeof ConversationStatus];
+
+export const FollowUpStatus = {
+  DRAFT: "DRAFT",
+  SENT: "SENT",
+  CANCELLED: "CANCELLED",
+} as const;
+export type FollowUpStatus = typeof FollowUpStatus[keyof typeof FollowUpStatus];
+
+// Aktive Conversation-Status (für Prüfung auf existierende aktive Conversation)
+export const ACTIVE_CONVERSATION_STATUSES: ConversationStatus[] = [
+  ConversationStatus.PENDING,
+  ConversationStatus.REPLIED,
+  ConversationStatus.FOLLOW_UP_SENT,
+];
+
+// Interface für Reply-Daten
+export interface ReplyData {
+  sentiment: ReplySentiment;
+  content?: string;
+  notes?: string;
+  createdBy: string;
+}
+
+// Interface für Follow-up-Daten
+export interface FollowUpData {
+  sequenceNumber: number;
+  dueAt: Date;
+  outreachDraftId?: string;
+}
+
+// Interface für Conversation-Filter
+export interface ConversationFilter {
+  status?: ConversationStatus;
+  companyId?: string;
+  hasReply?: boolean;
+  followUpDue?: boolean;
+  overdue?: boolean;
 }

@@ -1,29 +1,27 @@
-// Queue-System für Website Rescue Agent
-// Unterstützt Redis (BullMQ) im Produktivbetrieb und In-Memory-Mock für lokale Entwicklung
+/**
+ * Queue System for Website Rescue Agent
+ * 
+ * Supports Redis (BullMQ) for production and In-Memory Mock for local development.
+ * 
+ * @see https://docs.bullmq.io/
+ */
 
 import { Queue, Worker, type Job } from "bullmq";
-import IORedis from "ioredis";
 import type { QueueName, JobPayload } from "@/types";
 import { db } from "./db";
+import { 
+  createRedisConnection, 
+  defaultQueueOptions, 
+  defaultWorkerOptions,
+  queueConfigurations,
+  checkRedisHealth,
+} from "./queue-config";
 
-// ─── Konfiguration ─────────────────────────────────────────────────────────────
+// ─── Configuration ────────────────────────────────────────────────────────────
 
 const USE_MOCK_QUEUE = process.env.USE_MOCK_QUEUE === "true" || !process.env.REDIS_URL;
 
-// ─── Redis Connection (nur wenn nicht im Mock-Modus) ────────────────────────────
-
-let redisConnection: IORedis | null = null;
-
-export function getRedisConnection(): IORedis {
-  if (!redisConnection) {
-    redisConnection = new IORedis(process.env.REDIS_URL || "redis://localhost:6379", {
-      maxRetriesPerRequest: null,
-    });
-  }
-  return redisConnection;
-}
-
-// ─── Mock Queue für lokale Entwicklung ─────────────────────────────────────────
+// ─── Mock Queue for Local Development ─────────────────────────────────────────
 
 type MockJob = {
   id: string;
@@ -44,6 +42,7 @@ class MockQueue {
 
   constructor(name: QueueName) {
     this.name = name;
+    console.log(`[MockQueue] Created queue: ${name}`);
   }
 
   async add(name: QueueName, data: JobPayload, options?: { priority?: number; delay?: number; jobId?: string }) {
@@ -52,16 +51,19 @@ class MockQueue {
       id,
       name,
       data,
-      status: options?.delay ? "waiting" : "waiting",
+      status: "waiting",
       progress: 0,
       createdAt: new Date(),
     };
     this.jobs.set(id, job);
 
-    // Auto-process nach kurzer Verzögerung (für Demo)
-    setTimeout(() => this.processJob(id), 2000 + Math.random() * 3000);
+    // Auto-process after delay (for demo)
+    const delay = options?.delay || 2000 + Math.random() * 3000;
+    setTimeout(() => this.processJob(id), delay);
 
-    return { ...job } as unknown as Job;
+    console.log(`[MockQueue] Added job ${id} to ${this.name}, processing in ${Math.round(delay)}ms`);
+
+    return { ...job, id } as unknown as Job;
   }
 
   private async processJob(id: string) {
@@ -72,31 +74,38 @@ class MockQueue {
     job.startedAt = new Date();
 
     try {
-      // Mock-Verarbeitung basierend auf Queue-Typ
       await this.executeMockJob(job);
 
       job.status = "completed";
       job.completedAt = new Date();
       job.progress = 100;
 
-      // JobRecord aktualisieren
+      // Update JobRecord
       await db.jobRecord.updateMany({
         where: { queueJobId: id },
         data: { status: "COMPLETED", completedAt: new Date(), progress: 100 },
       });
 
-      // Status-Update je nach Job-Typ
+      // Update lead status
       await this.updateLeadStatus(job);
+
+      console.log(`[MockQueue] Job ${id} completed`);
 
     } catch (error) {
       job.status = "failed";
       job.failedAt = new Date();
-      job.errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler";
+      job.errorMessage = error instanceof Error ? error.message : "Unknown error";
 
       await db.jobRecord.updateMany({
         where: { queueJobId: id },
-        data: { status: "FAILED", completedAt: new Date(), errorMessage: job.errorMessage },
+        data: { 
+          status: "FAILED", 
+          completedAt: new Date(), 
+          errorMessage: job.errorMessage 
+        },
       });
+
+      console.error(`[MockQueue] Job ${id} failed:`, job.errorMessage);
     }
   }
 
@@ -105,7 +114,6 @@ class MockQueue {
 
     switch (job.name) {
       case "crawl":
-        // Simuliere Crawling
         await new Promise(r => setTimeout(r, 2000));
         await db.crawl.create({
           data: {
@@ -119,7 +127,6 @@ class MockQueue {
         break;
 
       case "analyze":
-        // Simuliere Analyse
         await new Promise(r => setTimeout(r, 3000));
         const score = Math.floor(Math.random() * 60) + 20;
         await db.analysis.create({
@@ -146,14 +153,13 @@ class MockQueue {
         break;
 
       case "generate-site":
-        // Simuliere Demo-Site-Generierung
         await new Promise(r => setTimeout(r, 4000));
         await db.generatedSite.create({
           data: {
             companyId,
             status: "GENERATED",
             style: (job.data as any).style || "MODERN_PREMIUM",
-            htmlContent: "<html><body><h1>Demo Website</h1><p>Dies ist eine automatisch generierte Demo.</p></body></html>",
+            htmlContent: "<html><body><h1>Demo Website</h1></body></html>",
             cssContent: "body { font-family: sans-serif; }",
             hasPlaceholders: true,
             placeholderNotes: "Bitte ersetzen: Logo, Kontaktdaten, Bilder",
@@ -162,7 +168,6 @@ class MockQueue {
         break;
 
       case "generate-outreach":
-        // Simuliere Outreach-Generierung
         await new Promise(r => setTimeout(r, 2500));
         const company = await db.company.findUnique({ where: { id: companyId } });
         await db.outreachDraft.create({
@@ -170,7 +175,7 @@ class MockQueue {
             companyId,
             type: (job.data as any).type || "EMAIL_SHORT",
             subject: `Website-Optimierung für ${company?.name || "Ihr Unternehmen"}`,
-            body: `Guten Tag,\n\nich habe mir Ihre Website angesehen und sehe Optimierungspotenzial...\n\nMit freundlichen Grüßen`,
+            body: `Guten Tag,\n\nich habe mir Ihre Website angesehen...`,
             status: "DRAFT",
             hasUnreviewedPlaceholders: true,
             isBlockedForSend: false,
@@ -208,13 +213,13 @@ class MockQueue {
         data: {
           companyId,
           toStatus: newStatus,
-          reason: `Automatisch nach ${job.name}`,
+          reason: `Automatically after ${job.name}`,
         },
       });
     }
   }
 
-  // Stats-Methoden
+  // Stats methods
   async getWaitingCount() {
     return Array.from(this.jobs.values()).filter(j => j.status === "waiting").length;
   }
@@ -235,27 +240,33 @@ class MockQueue {
 // ─── Queue Factory ────────────────────────────────────────────────────────────
 
 const queues: Partial<Record<QueueName, Queue | MockQueue>> = {};
+let redisConnection: ReturnType<typeof createRedisConnection> | null = null;
 
 export function getQueue(name: QueueName): Queue | MockQueue {
   if (!queues[name]) {
     if (USE_MOCK_QUEUE) {
       queues[name] = new MockQueue(name);
     } else {
+      // Lazy connection initialization
+      if (!redisConnection) {
+        redisConnection = createRedisConnection();
+      }
+
+      const config = queueConfigurations[name] || {};
+      
       queues[name] = new Queue(name, {
-        connection: getRedisConnection(),
-        defaultJobOptions: {
-          attempts: 3,
-          backoff: { type: "exponential", delay: 5000 },
-          removeOnComplete: { count: 100 },
-          removeOnFail: { count: 50 },
-        },
+        ...defaultQueueOptions,
+        ...config,
+        connection: redisConnection,
       });
+
+      console.log(`[BullMQ] Created queue: ${name}`);
     }
   }
   return queues[name]!;
 }
 
-// ─── Job-Enqueuing ────────────────────────────────────────────────────────────
+// ─── Job Enqueuing ────────────────────────────────────────────────────────────
 
 export async function enqueueJob(
   queue: QueueName,
@@ -271,13 +282,11 @@ export async function enqueueJob(
   return job.id ?? "";
 }
 
-// ─── Job-Pipeline ─────────────────────────────────────────────────────────────
-
 export async function enqueuePipeline(companyId: string): Promise<void> {
   await enqueueJob("crawl", { companyId }, { priority: 5 });
 }
 
-// ─── Queue-Status ─────────────────────────────────────────────────────────────
+// ─── Queue Status ─────────────────────────────────────────────────────────────
 
 export async function getQueueStats(name: QueueName) {
   const q = getQueue(name);
@@ -307,6 +316,35 @@ export async function getAllQueueStats() {
   return stats;
 }
 
-// ─── Info ─────────────────────────────────────────────────────────────────────
+// ─── Health Check ─────────────────────────────────────────────────────────────
 
-console.log(`Queue-Modus: ${USE_MOCK_QUEUE ? "MOCK (In-Memory)" : "REDIS (BullMQ)"}`);
+export { checkRedisHealth };
+
+// ─── Close Connections (for graceful shutdown) ────────────────────────────────
+
+export async function closeQueueConnections(): Promise<void> {
+  console.log("[Queue] Closing connections...");
+  
+  // Close all queues
+  for (const [name, queue] of Object.entries(queues)) {
+    if (queue instanceof Queue) {
+      await queue.close();
+      console.log(`[Queue] Closed: ${name}`);
+    }
+  }
+  
+  // Clear queues map
+  Object.keys(queues).forEach(key => delete queues[key as QueueName]);
+  
+  // Close Redis connection
+  if (redisConnection) {
+    await redisConnection.quit();
+    redisConnection = null;
+    console.log("[Queue] Redis connection closed");
+  }
+}
+
+// ─── Mode Info ────────────────────────────────────────────────────────────────
+
+console.log(`[Queue] Mode: ${USE_MOCK_QUEUE ? "MOCK (In-Memory)" : "REDIS (BullMQ)"}`);
+console.log(`[Queue] Redis URL: ${USE_MOCK_QUEUE ? "N/A" : process.env.REDIS_URL}`);

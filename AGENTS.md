@@ -32,6 +32,34 @@ Wichtige Komponenten:
 
 ---
 
+## Superpowers Skills
+
+Dieses Projekt verwendet professionelle Entwicklungs-Skills (basierend auf [obra/superpowers](https://github.com/obra/superpowers)).
+
+### Workflow
+
+1. **Brainstorming** - Vor jedem Feature: Design klären (`/accept design`)
+2. **Writing Plans** - Implementierungsplan erstellen (`/plan 1/2/3`)
+3. **TDD** - RED-GREEN-REFACTOR Zyklus während Implementierung
+4. **Code Review** - Automatisches Review vor jedem Commit
+5. **Git Worktrees** - Isolierte Feature-Branches
+6. **Finishing** - Merge & Cleanup nach Fertigstellung
+
+### Dokumentation
+
+Alle Skills sind dokumentiert in:
+- `apps/website-rescue-agent/skills/SKILL.md` - Übersicht
+- `apps/website-rescue-agent/skills/*/SKILL.md` - Einzelne Skills
+
+### Verpflichtend für
+
+- Features > 30 Minuten Aufwand
+- Neue Architektur-Komponenten
+- Bugfixes mit unklarer Ursache
+- Alle Datenbank-Schema-Änderungen
+
+---
+
 ## Entwicklungs-Konventionen
 
 ### Coding Style
@@ -39,6 +67,7 @@ Wichtige Komponenten:
 - Conventional Commits: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`
 - Keine Business-Logik in UI-Komponenten
 - Services in `src/server/services/`, Prompts in `src/server/prompts/`
+- **TDD erforderlich**: Tests vor Code (RED-GREEN-REFACTOR)
 
 ### Branch-Strategie
 - `main` — stabile Version, direkte Pushes verboten
@@ -102,10 +131,13 @@ Wichtige Komponenten:
 | `apps/website-rescue-agent/prisma/schema.prisma` | Vollständiges Datenmodell |
 | `apps/website-rescue-agent/src/server/` | Business-Logik, Services, Prompts |
 | `apps/website-rescue-agent/src/lib/` | Shared Utilities, DB, Queue, LLM, Auth |
+| `apps/website-rescue-agent/skills/` | Superpowers Development Skills |
+| `apps/website-rescue-agent/e2e/` | Playwright E2E Tests |
 | `docs/architecture/README.md` | Architektur-Details |
 | `docs/decisions/` | Architektur-Entscheidungen (ADRs) |
 | `docs/runbooks/development-workflow.md` | Dev-Workflow |
 | `docs/prompts/team-prompts.md` | Wiederverwendbare Prompts |
+| `docs/tools/` | Entwicklungs-Tools (Playwright, Sentry, BullMQ) |
 | `apps/website-rescue-agent/src/ui-ux-pro-max/` | UI UX Pro Max Design-Daten |
 | `scripts/` | UI UX Pro Max Python Scripts |
 

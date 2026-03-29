@@ -23,9 +23,9 @@ export default async function RootLayout({
     <html lang="de" className="dark" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
         {session ? (
-          <div className="flex h-screen overflow-hidden bg-background">
+          <div className="flex h-screen overflow-hidden bg-background" suppressHydrationWarning>
             <Sidebar />
-            <div className="flex flex-1 flex-col overflow-hidden">
+            <div className="flex flex-1 flex-col overflow-hidden" suppressHydrationWarning>
               <Header user={session.user} />
               <main className="flex-1 overflow-y-auto p-6 scrollbar-thin">
                 {children}

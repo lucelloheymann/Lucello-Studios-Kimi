@@ -29,11 +29,11 @@ export function Sidebar() {
   return (
     <aside className="flex h-full w-60 flex-col bg-zinc-950 border-r border-zinc-800/60">
       {/* Logo */}
-      <div className="flex h-14 items-center gap-2.5 border-b border-zinc-800/60 px-4">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white">
+      <div className="flex h-14 items-center gap-2.5 border-b border-zinc-800/60 px-4" suppressHydrationWarning>
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white" suppressHydrationWarning>
           <IconWrapper icon={Zap} className="h-4 w-4 text-zinc-900" />
         </div>
-        <div className="leading-tight">
+        <div className="leading-tight" suppressHydrationWarning>
           <p className="text-sm font-semibold text-white">Rescue Agent</p>
           <p className="text-xs text-zinc-600">Lucello Studio</p>
         </div>
@@ -64,9 +64,9 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-zinc-800/60 p-4">
-        <div className="flex items-center gap-2">
-          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+      <div className="border-t border-zinc-800/60 p-4" suppressHydrationWarning>
+        <div className="flex items-center gap-2" suppressHydrationWarning>
+          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" suppressHydrationWarning />
           <p className="text-xs text-zinc-600">Kein Versand ohne Freigabe</p>
         </div>
       </div>
