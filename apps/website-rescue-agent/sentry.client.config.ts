@@ -16,6 +16,9 @@ Sentry.init({
   // Release tracking
   release: process.env.SENTRY_RELEASE,
   
+  // Debug mode - immer aktiv in Development
+  debug: process.env.NODE_ENV === "development",
+  
   // BeforeSend zum Filtern sensibler Daten
   beforeSend(event) {
     // Filtere potentielle PII aus dem Frontend

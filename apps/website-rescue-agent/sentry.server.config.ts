@@ -15,8 +15,8 @@ Sentry.init({
   // Release tracking
   release: process.env.SENTRY_RELEASE,
   
-  // Debug mode
-  debug: process.env.NODE_ENV === "development" && process.env.SENTRY_DEBUG === "true",
+  // Debug mode - immer aktiv in Development
+  debug: process.env.NODE_ENV === "development",
   
   // BeforeSend hook to filter sensitive data
   beforeSend(event) {
