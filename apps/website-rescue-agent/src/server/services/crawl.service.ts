@@ -7,6 +7,7 @@ import type { PageType } from "@/types";
 import path from "path";
 import fs from "fs/promises";
 import { logCrawlStarted, logCrawlCompleted, logCrawlFailed } from "./audit.service";
+import { extractPageData as extractPageDataFn, findInternalLinks as findInternalLinksFn } from "./crawl-evaluate.js";
 
 const STORAGE_PATH = process.env.STORAGE_LOCAL_PATH || "./storage";
 const TIMEOUT = parseInt(process.env.CRAWL_TIMEOUT_MS || "30000");
@@ -77,66 +78,8 @@ async function saveHtml(
 // ─── Page-Daten extrahieren ───────────────────────────────────────────────────
 
 async function extractPageData(page: PlaywrightPage) {
-  return await page.evaluate(() => {
-    const getText = (sel: string) =>
-      document.querySelector(sel)?.textContent?.trim() || null;
-    const getMeta = (name: string) =>
-      document
-        .querySelector(`meta[name="${name}"], meta[property="${name}"]`)
-        ?.getAttribute("content") || null;
-
-    // Headings
-    const headings = Array.from(
-      document.querySelectorAll("h1, h2, h3")
-    ).map((el) => ({
-      level: parseInt(el.tagName[1]),
-      text: el.textContent?.trim() || "",
-    }));
-
-    // CTAs erkennen (Buttons, Links mit typischen Texten)
-    const ctaKeywords = /kontakt|anfrage|jetzt|kostenlos|termin|beratung|anrufen|schreiben|buchen|bestellen/i;
-    const ctaTexts = Array.from(
-      document.querySelectorAll("button, a, .btn, [class*='cta']")
-    )
-      .map((el) => el.textContent?.trim() || "")
-      .filter((t) => t.length > 0 && t.length < 60 && ctaKeywords.test(t));
-
-    // E-Mails
-    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-    const bodyText = document.body.textContent || "";
-    const emails = [...new Set(bodyText.match(emailRegex) || [])];
-
-    // Telefon
-    const phoneRegex = /(\+49|0)[0-9\s\-\/]{6,20}/g;
-    const phones = [...new Set(bodyText.match(phoneRegex) || [])];
-
-    // Adresse (grob)
-    const hasAddress = /[0-9]{5}\s+[A-ZÄÖÜ][a-zäöü]+/.test(bodyText);
-
-    // Wörter zählen
-    const wordCount = bodyText.split(/\s+/).filter((w) => w.length > 1).length;
-
-    return {
-      title: document.title || null,
-      metaDescription: getMeta("description"),
-      metaKeywords: getMeta("keywords"),
-      h1: getText("h1"),
-      headings,
-      bodyText: bodyText.slice(0, 10000), // Limit
-      hasViewportMeta: !!document.querySelector('meta[name="viewport"]'),
-      hasCanonical: !!document.querySelector('link[rel="canonical"]'),
-      hasCTA: ctaTexts.length > 0,
-      ctaTexts,
-      hasForm: document.querySelectorAll("form").length > 0,
-      hasPhone: phones.length > 0,
-      hasAddress,
-      hasImages: document.querySelectorAll("img").length > 0,
-      imageCount: document.querySelectorAll("img").length,
-      contactEmails: emails,
-      contactPhones: phones,
-      wordCount,
-    };
-  });
+  // Use pure JS function to avoid esbuild __name injection issue
+  return await page.evaluate(extractPageDataFn);
 }
 
 // ─── Intern verlinkbare Seiten finden ─────────────────────────────────────────
@@ -146,22 +89,7 @@ async function findInternalLinks(
   baseUrl: string
 ): Promise<string[]> {
   const baseDomain = extractDomain(baseUrl);
-  const links = await page.evaluate((domain) => {
-    return Array.from(document.querySelectorAll("a[href]"))
-      .map((a) => (a as HTMLAnchorElement).href)
-      .filter((href) => {
-        try {
-          const u = new URL(href);
-          return (
-            u.hostname.includes(domain) &&
-            !href.includes("#") &&
-            !href.match(/\.(pdf|jpg|png|gif|svg|zip|docx?|xlsx?)$/i)
-          );
-        } catch {
-          return false;
-        }
-      });
-  }, baseDomain);
+  const links = await page.evaluate(findInternalLinksFn, baseDomain);
 
   return [...new Set(links)];
 }

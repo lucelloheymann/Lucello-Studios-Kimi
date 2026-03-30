@@ -90,7 +90,7 @@ const processors: Record<string, (job: Job<JobPayload>) => Promise<void>> = {
   },
 
   "send-outreach": async (job) => {
-    const { companyId, outreachDraftId } = job.data;
+    const { companyId, outreachDraftId } = job.data as { companyId: string; outreachDraftId: string };
     console.log(`[send-outreach] Starting: ${companyId} (${outreachDraftId})`);
     
     await updateJobRecord(job, "RUNNING");
