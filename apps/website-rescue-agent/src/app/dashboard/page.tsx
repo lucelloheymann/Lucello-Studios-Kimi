@@ -327,9 +327,9 @@ export default function DashboardPage() {
                   </div>
                   
                   <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    {item.leads.slice(0, 4).map((lead) => (
+                    {item.leads.slice(0, 4).map((lead, idx) => (
                       <Link
-                        key={lead.id}
+                        key={`${lead.id}-${idx}`}
                         href={`/leads/${lead.id}`}
                         className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2.5 py-1 rounded-md transition-colors border border-zinc-700"
                       >
@@ -726,9 +726,9 @@ export default function DashboardPage() {
                       <p className="text-xs text-zinc-600 mt-0.5">{item.sub}</p>
                       
                       <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        {item.leads.slice(0, 4).map((lead) => (
+                        {item.leads.slice(0, 4).map((lead, idx) => (
                           <Link
-                            key={lead.id}
+                            key={`${lead.id}-${idx}`}
                             href={`/leads/${lead.id}`}
                             className="inline-flex items-center gap-1 rounded-md bg-zinc-800 border border-zinc-700 px-2 py-0.5 text-xs text-zinc-400 hover:bg-zinc-700 hover:text-white transition-colors"
                           >

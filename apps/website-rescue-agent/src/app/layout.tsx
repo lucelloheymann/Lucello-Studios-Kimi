@@ -22,6 +22,9 @@ export default async function RootLayout({
   return (
     <html lang="de" className="dark" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
+        <script dangerouslySetInnerHTML={{__html: `
+          document.querySelectorAll('[bis_skin_checked]').forEach(el => el.removeAttribute('bis_skin_checked'));
+        `}} />
         {session ? (
           <div className="flex h-screen overflow-hidden bg-background" suppressHydrationWarning>
             <Sidebar />
