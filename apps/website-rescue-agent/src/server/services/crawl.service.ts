@@ -153,6 +153,43 @@ export async function crawlWebsite(companyId: string): Promise<void> {
     // Startseiten-Daten
     const homeData = await extractPageData(browserPage);
 
+    // VALIDIERUNG: Mindestanforderungen für brauchbaren Crawl
+    const isValidCrawl = 
+      httpStatus >= 200 && 
+      httpStatus < 300 &&
+      homeData.title && 
+      homeData.title.length > 0 &&
+      homeData.wordCount > 50; // Mindestens 50 Wörter für echte Content-Seite
+
+    if (!isValidCrawl) {
+      const failReason = httpStatus < 200 || httpStatus >= 300
+        ? `HTTP ${httpStatus} - Seite nicht erreichbar`
+        : !homeData.title 
+        ? 'Kein Seitentitel gefunden'
+        : `Zu wenig Content (${homeData.wordCount} Wörter)`;
+      
+      await db.crawl.update({
+        where: { id: crawl.id },
+        data: {
+          status: "FAILED",
+          completedAt: new Date(),
+          httpStatus,
+          finalUrl,
+          errorMessage: failReason,
+        },
+      });
+      
+      await db.company.update({
+        where: { id: companyId },
+        data: { status: "CRAWL_FAILED" },
+      });
+
+      await logCrawlFailed(companyId, failReason);
+      
+      await browser.close();
+      return;
+    }
+
     await db.page.create({
       data: {
         crawlId: crawl.id,

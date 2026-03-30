@@ -26,6 +26,36 @@ export async function analyzeWebsite(companyId: string): Promise<void> {
 
   const homePage = crawl.pages.find((p) => p.pageType === "HOME") ?? crawl.pages[0];
 
+  // VALIDIERUNG: Mindestanforderungen für brauchbare Analyse
+  const hasValidContent = 
+    homePage &&
+    homePage.title &&
+    homePage.title.length > 0 &&
+    (homePage.wordCount ?? 0) > 50;
+
+  if (!hasValidContent) {
+    const failReason = !homePage?.title 
+      ? 'Kein Seitentitel vorhanden' 
+      : `Zu wenig Content (${homePage.wordCount} Wörter)`;
+    
+    await db.analysis.create({
+      data: {
+        companyId,
+        crawlId: crawl.id,
+        status: "FAILED",
+        errorMessage: `Unzureichende Crawl-Daten: ${failReason}`,
+        isQualified: false,
+      },
+    });
+
+    await db.company.update({
+      where: { id: companyId },
+      data: { status: "ANALYSIS_FAILED" },
+    });
+
+    throw new Error(`Analyse nicht möglich: ${failReason}`);
+  }
+
   // Audit-Log: Analyse gestartet
   await logAnalysisStarted(companyId);
 

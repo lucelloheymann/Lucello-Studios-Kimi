@@ -138,8 +138,8 @@ interface SiteGenPromptData {
 export function buildSiteGenerationUserPrompt(data: SiteGenPromptData): string {
   const { company, analysis, homePage, servicesPage, style } = data;
 
-  const weaknesses = (analysis.weaknesses as string[] | null) ?? [];
-  const strengths = (analysis.strengths as string[] | null) ?? [];
+  const weaknesses: string[] = analysis.weaknesses ? JSON.parse(analysis.weaknesses as string) : [];
+  const strengths: string[] = analysis.strengths ? JSON.parse(analysis.strengths as string) : [];
 
   return `## Firmendaten
 

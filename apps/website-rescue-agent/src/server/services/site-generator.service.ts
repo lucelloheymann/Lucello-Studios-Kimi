@@ -120,7 +120,11 @@ export async function generateDemoSite(
     
     await db.generatedSite.update({
       where: { id: siteRecord.id },
-      data: { status: "REJECTED" },
+      data: { 
+        status: "FAILED",
+        errorCode: "GENERATION_ERROR",
+        errorDetails: message,
+      },
     });
     throw error;
   }

@@ -10,6 +10,10 @@
  * @see https://docs.bullmq.io/guide/workers
  */
 
+// Load environment variables from .env.local
+import { config } from "dotenv";
+config({ path: ".env.local" });
+
 import { Worker, type Job } from "bullmq";
 import { 
   createRedisConnection, 

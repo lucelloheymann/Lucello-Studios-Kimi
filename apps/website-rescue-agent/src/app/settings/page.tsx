@@ -52,8 +52,8 @@ export default async function SettingsPage() {
         <div className="px-5 pb-4">
           <div className="flex items-center gap-2 rounded-lg bg-zinc-800/50 border border-zinc-800 px-3 py-2">
             <span className="text-xs text-zinc-500">Provider:</span>
-            <span className="text-xs font-semibold text-white">{process.env.LLM_PROVIDER ?? "openai"}</span>
-            <span className="text-xs text-zinc-600 ml-auto">Wechsel via LLM_PROVIDER=anthropic</span>
+            <span className="text-xs font-semibold text-white">gemini</span>
+            <span className="text-xs text-zinc-600 ml-auto">Modell: {process.env.GEMINI_MODEL ?? "gemini-2.5-flash-lite"}</span>
           </div>
         </div>
       </section>
